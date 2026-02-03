@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pixel Adventure | Login</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="pixel-bg">
+    <!-- Pixel Border Frame -->
+    <div class="pixel-border frame-top"></div>
+    <div class="pixel-border frame-right"></div>
+    <div class="pixel-border frame-bottom"></div>
+    <div class="pixel-border frame-left"></div>
+    
+    <!-- CRT Scanline Effect -->
+    <div class="crt-overlay"></div>
+    
+    <div class="container pixel-container">
+        <!-- Back Button -->
+        <button class="pixel-back-btn" onclick="goBack()">
+            <span class="back-icon">←</span>
+            <span class="back-text">BACK</span>
+        </button>
+
+        <!-- Pixel Logo -->
+        <div class="pixel-logo-container">
+            <div class="pixel-logo-frame">
+                <div class="pixel-logo-inner">
+                    <img src="assets/logo.png" alt="Pixel Adventure" class="pixel-logo">
+                    <div class="pixel-title">
+                        <h1 class="pixel-text">ADVENTURE</h1>
+                        <h2 class="pixel-subtitle">AWAITS</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Login/Register Tabs -->
+        <div class="pixel-tabs">
+        <button
+            type="button"
+            id="loginTab"
+            class="pixel-tab active"
+            
+        >
+            
+            <span class="tab-text">LOGIN</span>
+        </button>
+
+        <button
+            type="button"
+            id="registerTab"
+            class="pixel-tab"
+           
+        >
+           
+            <span class="tab-text">REGISTER</span>
+        </button>
+    </div>
+
+        <!-- Login Form -->
+        <div class="pixel-box login-box active" id="loginForm">
+            <div class="pixel-box-header">
+               
+                <h2 class="pixel-heading">RETURNING ADVENTURER</h2>
+            </div>
+            
+            <div class="pixel-box-content">
+                <form id="loginFormData" class="pixel-form">
+                    <div class="pixel-form-group">
+                        <label for="loginUsername" class="pixel-label">
+                            USERNAME
+                        </label>
+                        <div class="pixel-input-wrapper">
+                            <input type="text" id="loginUsername" class="pixel-input" placeholder="ENTER USERNAME" required>
+                            <div class="pixel-input-border"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="pixel-form-group">
+                        <label for="loginPassword" class="pixel-label">
+                            PASSWORD
+                        </label>
+                        <div class="pixel-input-wrapper">
+                            <input type="password" id="loginPassword" class="pixel-input" placeholder="••••••••" required>
+                            <div class="pixel-input-border"></div>
+                            <button type="button" class="pixel-eye-toggle" onclick="togglePassword('loginPassword')">
+                                👁️
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="pixel-form-options">
+                        <label class="pixel-checkbox small">
+                            <input type="checkbox" id="rememberMe">
+                            <span class="pixel-checkmark"></span>
+                            <span class="pixel-checkbox-text">REMEMBER ME</span>
+                        </label>
+                        <button type="button" class="pixel-link-btn" onclick="showForgotPassword()">
+                            FORGOT PASSWORD?
+                        </button>
+                    </div>
+                    
+                    <button type="submit" class="pixel-btn pixel-btn-primary pixel-btn-wide">
+                        <span class="btn-text">BEGIN ADVENTURE</span>
+                    </button>
+                    
+                    <div class="pixel-divider">
+                        <span class="divider-text">OR</span>
+                    </div>
+                    
+                    <button type="button" class="pixel-btn pixel-btn-secondary pixel-btn-wide" onclick="guestLogin()">
+                        <span class="btn-text">PLAY AS GUEST</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Register Form -->
+        <div class="pixel-box register-box" id="registerForm">
+            <div class="pixel-box-header">
+                <h2 class="pixel-heading">NEW ADVENTURER</h2>
+            </div>
+            
+            <div class="pixel-box-content">
+                <form id="registerFormData" class="pixel-form">
+                    <div class="pixel-form-group">
+                        <label for="regUsername" class="pixel-label">
+                            USERNAME
+                        </label>
+                        <div class="pixel-input-wrapper">
+                            <input type="text" id="regUsername" class="pixel-input" placeholder="CHOOSE USERNAME" required>
+                            <div class="pixel-input-border"></div>
+                        </div>
+                        <div class="pixel-input-feedback" id="usernameFeedback"></div>
+                    </div>
+                    
+                    <div class="pixel-form-group">
+                        <label for="regEmail" class="pixel-label">
+                            <span class="label-icon">📧</span>
+                            EMAIL (OPTIONAL)
+                        </label>
+                        <div class="pixel-input-wrapper">
+                            <input type="email" id="regEmail" class="pixel-input" placeholder="EMAIL@EXAMPLE.COM">
+                            <div class="pixel-input-border"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="pixel-form-group">
+                        <label for="regPassword" class="pixel-label">
+                            PASSWORD
+                        </label>
+                        <div class="pixel-input-wrapper">
+                            <input type="password" id="regPassword" class="pixel-input" placeholder="CREATE PASSWORD" required>
+                            <div class="pixel-input-border"></div>
+                            <button type="button" class="pixel-eye-toggle" onclick="togglePassword('regPassword')">
+                                👁️
+                            </button>
+                        </div>
+                        
+                        <div class="pixel-password-strength">
+                            <div class="strength-bar">
+                                <div class="strength-fill" id="strengthFill"></div>
+                            </div>
+                            <div class="strength-text" id="strengthText">PASSWORD STRENGTH</div>
+                        </div>
+                    </div>
+                    
+                    <div class="pixel-form-group">
+                        <label for="regConfirmPassword" class="pixel-label">
+                            CONFIRM PASSWORD
+                        </label>
+                        <div class="pixel-input-wrapper">
+                            <input type="password" id="regConfirmPassword" class="pixel-input" placeholder="CONFIRM PASSWORD" required>
+                            <div class="pixel-input-border"></div>
+                            <button type="button" class="pixel-eye-toggle" onclick="togglePassword('regConfirmPassword')">
+                                👁️
+                            </button>
+                        </div>
+                        <div class="pixel-input-feedback" id="confirmFeedback"></div>
+                    </div>
+                    
+                    <!-- Password Requirements -->
+                    <div class="pixel-requirements">
+                        <h4 class="requirements-title">PASSWORD REQUIREMENTS:</h4>
+                        <ul class="requirements-list">
+                            <li id="reqLength">8+ CHARACTERS</li>
+                            <li id="reqUppercase">ONE UPPERCASE</li>
+                            <li id="reqLowercase">ONE LOWERCASE</li>
+                            <li id="reqNumber">ONE NUMBER</li>
+                        </ul>
+                    </div>
+                    
+                    <button type="submit" class="pixel-btn pixel-btn-primary pixel-btn-wide">
+                        <span class="btn-text">CREATE ACCOUNT</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Game Features -->
+        <div class="pixel-features">
+            <div class="feature-item pixel-box-small">
+                <div class="feature-icon">🏆</div>
+                <h3 class="feature-title">LEADERBOARDS</h3>
+                <p class="feature-desc">CLIMB THE RANKS</p>
+            </div>
+        </div>
+
+        <!-- Loading Screen -->
+        <div id="loadingScreen" class="pixel-loading">
+            <div class="loading-content">
+                <div class="pixel-loader"></div>
+                <h3 class="loading-title">LOADING ADVENTURE...</h3>
+                <p class="loading-subtitle">PREPARING PIXEL WORLD</p>
+                <div class="loading-bar">
+                    <div class="loading-progress"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Message Toast -->
+    <div id="messageToast" class="pixel-toast">
+        <div class="toast-content">
+            <span class="toast-text">WELCOME ADVENTURER</span>
+        </div>
+    </div>
+
+    <!-- Pixel Particles Background -->
+    <div class="particles-container"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>
