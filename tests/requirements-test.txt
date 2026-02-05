@@ -1,0 +1,29 @@
+# Testing dependencies
+pytest==7.4.3
+pytest-cov==4.1.0
+pytest-mock==3.12.0
+
+# FastAPI testing
+httpx==0.25.2
+fastapi==0.104.1
+uvicorn==0.24.0
+
+# Dash testing - FIX: Use compatible selenium version
+dash==2.14.2
+selenium==4.2.0
+webdriver-manager==4.0.1
+
+# Data and analytics
+pandas==2.1.4
+plotly==5.18.0
+numpy==1.26.2
+
+# Database
+pydantic==2.5.2
+
+# Additional utilities
+python-dateutil==2.8.2
+
+# Additional dash testing dependencies
+multiprocess
+psutil
