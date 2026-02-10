@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pixel Adventure | Terms & Conditions</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="pixel-bg app-fit">
+    <!-- Pixel Border Frame -->
+    <div class="pixel-border frame-top"></div>
+    <div class="pixel-border frame-right"></div>
+    <div class="pixel-border frame-bottom"></div>
+    <div class="pixel-border frame-left"></div>
+    
+    <!-- CRT Scanline Effect -->
+    <div class="crt-overlay"></div>
+    
+    <div class="container pixel-container">
+        <!-- Simple Header -->
+        <div class="simple-header"></div>
+
+        <!-- Terms & Conditions Box -->
+        <div class="pixel-box terms-box">
+            <div class="pixel-box-header">
+                <h2 class="pixel-heading">TERMS & CONDITIONS</h2>
+            </div>
+            
+            <div class="pixel-box-content scroll-box">
+                <div class="pixel-text-content">
+                    <div class="pixel-section">
+                        <h3 class="pixel-subheading">GAMEPLAY AGREEMENT</h3>
+                        <p class="pixel-paragraph">By playing League Quest, you agree to these terms:</p>
+                        <ul class="pixel-list">
+                            <li>Play fairly and respect other adventurers</li>
+                            <li>No cheats, hacks, or unauthorized mods</li>
+                            <li>Progress saved to your account only</li>
+                            <li>Report bugs through proper channels</li>
+                        </ul>
+                    </div>
+
+                    <div class="pixel-section">
+                        <h3 class="pixel-subheading">DATA & PRIVACY</h3>
+                        <p class="pixel-paragraph">We collect anonymous data to improve your adventure:</p>
+                        <ul class="pixel-list">
+                            <li>Gameplay statistics for balancing</li>
+                            <li>Crash reports to fix issues</li>
+                            <li>Death locations for level design</li>
+                            <li>Playtime for game improvements</li>
+                        </ul>
+                    </div>
+
+                    <div class="pixel-section">
+                        <h3 class="pixel-subheading">ACCOUNT SAFETY</h3>
+                        <p class="pixel-paragraph">Your responsibility:</p>
+                        <ul class="pixel-list">
+                            <li>Keep login details secret</li>
+                            <li>Account actions are your responsibility</li>
+                            <li>Report suspicious activity immediately</li>
+                            <li>Regular backups recommended</li>
+                        </ul>
+                    </div>
+
+                    <div class="pixel-section">
+                        <h3 class="pixel-subheading">FAIR PLAY RULES</h3>
+                        <ul class="pixel-list">
+                            <li>No third-party cheating tools</li>
+                            <li>No account sharing or selling</li>
+                            <li>Respect community guidelines</li>
+                            <li>Violations may suspend your account</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Agreement Checkboxes -->
+            <div class="pixel-agreement">
+                <div class="pixel-checkbox-group">
+                    <label class="pixel-checkbox">
+                        <input type="checkbox" id="agreeTerms">
+                        <span class="pixel-checkmark"></span>
+                        <span class="pixel-checkbox-text">I accept the Terms & Conditions</span>
+                    </label>
+                    
+                    <label class="pixel-checkbox">
+                        <input type="checkbox" id="agreeData">
+                        <span class="pixel-checkmark"></span>
+                        <span class="pixel-checkbox-text">I allow anonymous data collection</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="pixel-box-footer">
+                <button class="pixel-btn pixel-btn-secondary" type="button" onclick="showHelp()">
+                    <span class="btn-icon">❓</span>
+                    <span class="btn-text">HELP</span>
+                </button>
+                
+                <button class="pixel-btn pixel-btn-primary" id="continueBtn" onclick="proceedToLogin()" disabled>
+                    <span class="btn-icon">▶️</span>
+                    <span class="btn-text">CONTINUE</span>
+                </button>
+            </div>
+
+            <!-- Version Number -->
+            <div class="version-number">v1.0.0</div>
+    </div>
+
+    <!-- Help Modal -->
+    <div id="helpModal" class="pixel-modal">
+        <div class="pixel-modal-content">
+            <div class="pixel-modal-header">
+                <h3 class="pixel-modal-title">❓ NEED HELP?</h3>
+                <button class="pixel-close" type="button" onclick="closeHelp()">&times;</button>
+            </div>
+            <div class="pixel-modal-body">
+                <div class="help-options">
+                    <div class="help-option pixel-box-small" onclick="showGuidebook()">
+                        <div class="help-icon">📖</div>
+                        <h4 class="help-title">GUIDEBOOK</h4>
+                        <p class="help-desc">Read the adventurer's guide</p>
+                    </div>
+                    <div class="help-option pixel-box-small">
+                        <div class="help-icon">📧</div>
+                        <h4 class="help-title">CONTACT</h4>
+                        <p class="help-desc">support@pixeladventure.game</p>
+                    </div>
+                    <div class="help-option pixel-box-small">
+                        <div class="help-icon">👥</div>
+                        <h4 class="help-title">COMMUNITY</h4>
+                        <p class="help-desc">Join our pixel community</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Guidebook Modal -->
+    <div id="guidebookModal" class="pixel-modal">
+        <div class="pixel-modal-content">
+            <div class="pixel-modal-header">
+                <h3 class="pixel-modal-title">📖 PIXEL ADVENTURE GUIDEBOOK</h3>
+                <button class="pixel-close" type="button" onclick="closeGuidebook()">&times;</button>
+            </div>
+            <div class="pixel-modal-body">
+                <div class="guidebook-content">
+                    <p class="pixel-paragraph">Welcome, brave adventurer! This guidebook contains absolutely useful information that you should definitely read. Or not. It's up to you really.</p>
+                    
+                    <div class="guidebook-section">
+                        <h4>🎮 CONTROLS (PROBABLY)</h4>
+                        <ul class="pixel-list">
+                            <li>⬅️➡️ Move left/right (maybe)</li>
+                            <li>⬆️ Jump (or crouch, who knows)</li>
+                            <li>⬇️ Crouch (or jump, we forget)</li>
+                            <li>Spacebar: Do something important</li>
+                            <li>ESC: Panic button for when you're stuck</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="guidebook-section">
+                        <h4>💀 DEATH MECHANICS</h4>
+                        <p class="pixel-paragraph">When you die (and you will), your character does a funny little dance before respawning. This is a feature, not a bug. The dance gets progressively sadder with each death.</p>
+                    </div>
+                    
+                    <div class="guidebook-section">
+                        <h4>🍄 ITEM DESCRIPTIONS</h4>
+                        <ul class="pixel-list">
+                            <li>Red Mushroom: Makes you grow. Or shrink. We're still testing.</li>
+                            <li>Blue Potion: Grants temporary invincibility. Or turns you blue. 50/50 chance.</li>
+                            <li>Golden Coin: Worth 1 point. Or 100 points. Depends on our mood.</li>
+                            <li>Mystery Box: Contains either treasure or disappointment. Good luck!</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="guidebook-section">
+                        <h4>🏆 SECRET ACHIEVEMENTS</h4>
+                        <p class="pixel-paragraph">• "Stuck in a Wall" - Clip through geometry for 5 minutes<br>
+                        • "Button Masher" - Press every key on your keyboard simultaneously<br>
+                        • "Pixel Picasso" - Draw something in the dirt with your character<br>
+                        • "Professional Idler" - Stand still for 1 hour</p>
+                    </div>
+                    
+                    <div class="guidebook-section">
+                        <h4>⚠️ IMPORTANT DISCLAIMER</h4>
+                        <p class="pixel-paragraph">This game may contain: flashing lights, questionable physics, dialogue that doesn't make sense, NPCs with existential crises, and at least one chicken that knows too much. Play at your own risk.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pixel Particles Background -->
+    <div class="particles-container"></div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

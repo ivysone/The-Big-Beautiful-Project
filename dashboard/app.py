@@ -1,13 +1,11 @@
 import pandas as pd
 import plotly.express as px
 from dash import Dash, html, dcc, Input, Output
-from db import query_df
-from metrics import normalize_events, funnel_by_stage, time_by_stage, spike_detection
+from .db import query_df
+from .metrics import normalize_events, funnel_by_stage, time_by_stage, spike_detection
 
 # Dashboard UI
-
-
-app = Dash(__name__)
+app = Dash(__name__, requests_pathname_prefix="/admin/")
 app.title = "Telemetry Dashboard (Admin)"
 
 def load_data():
@@ -18,7 +16,7 @@ def load_data():
 
 def difficulty_options(df_norm):
     opts = sorted([x for x in df_norm["difficulty"].dropna().unique().tolist()])
-    return [{"label": d, "value": d} for d in (opts if opts else ["easy","normal","hard"])]
+    return [{"label": d, "value": d} for d in (opts if opts else ["easy","medium","hard"])]
 
 app.layout = html.Div([
     html.H2("📊 Telemetry Analytics Dashboard"),
@@ -151,4 +149,4 @@ def update_dashboard(difficulty, stage_value):
 
 
 if __name__ == "__main__":
-    app.run_server(debug=True, host="0.0.0.0", port=8050)
+    app.run(debug=True, host="0.0.0.0", port=8050)

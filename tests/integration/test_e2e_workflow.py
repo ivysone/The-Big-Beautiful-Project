@@ -16,7 +16,7 @@ import pandas as pd
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'The-Big-Beautiful-Project-main'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'The-Big-Beautiful-Project-main', 'dashboard'))
 
-from main import app as api_app, init_db
+from legacy.main import app as api_app, init_db
 from db import query_df
 from metrics import normalize_events, funnel_by_stage, time_by_stage, spike_detection
 
