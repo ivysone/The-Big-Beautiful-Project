@@ -135,15 +135,25 @@ def update_dashboard_db(row_data):
         user_id = int(hashlib.md5(row_data["username"].encode()).hexdigest()[:8], 16) % 1000
         session_id = f"session_{row_data['username']}_{row_data['timestamp']}"
 
-        difficulty = row_data["mode_level_choice"].lower() if row_data["mode_level_choice"] else "medium"
-        stage_map = {"easy": 2, "medium": 5, "hard": 8, "": 5}
-        stage_number = stage_map.get(difficulty, 5)
+        difficulty = row_data["mode_level_choice"].lower() if row_data.get("mode_level_choice") else "medium"
+        stage_number = row_data.get("stage_number")
+        if not stage_number:
+            stage_map = {"easy": 2, "medium": 5, "hard": 8, "": 5}
+            stage_number = stage_map.get(difficulty, 5)
+
 
         event_type = row_data["event_type"]
-        event_data = json.dumps({
+        event_data_obj = {
             "difficulty": difficulty,
-            "character": row_data["character_choice"] or ""
-        })
+            "character": row_data.get("character_choice") or ""
+        }
+
+        extra = row_data.get("extra")
+        if isinstance(extra, dict):
+            event_data_obj.update(extra)
+
+        event_data = json.dumps(event_data_obj)
+
 
         cur.execute("""
         INSERT INTO telemetry_events(user_id, session_id, event_type, event_data, stage_number, timestamp)
@@ -156,6 +166,23 @@ def update_dashboard_db(row_data):
             stage_number,
             row_data["timestamp"]
         ))
+
+        if event_type == "death":
+            x = row_data.get("x_position")
+            y = row_data.get("y_position")
+            if x is not None and y is not None:
+                cur.execute("""
+                INSERT INTO death_heatmap(user_id, session_id, stage_number, x_position, y_position, timestamp)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """, (
+                    user_id,
+                    session_id,
+                    stage_number,
+                    float(x),
+                    float(y),
+                    row_data["timestamp"]
+                ))
+
 
         if event_type == "logout" and row_data["duration_seconds"]:
             duration_ms = int(row_data["duration_seconds"]) * 1000
@@ -200,6 +227,11 @@ class UserEvent(BaseModel):
     duration_seconds: Optional[int] = None
     timestamp: Optional[str] = None
 
+    stage_number: Optional[int] = None
+    x_position: Optional[float] = None
+    y_position: Optional[float] = None
+    extra: Optional[dict] = None
+
 @app.on_event("startup")
 def startup():
     ensure_csv_exists()
@@ -232,7 +264,7 @@ def main_page(request: Request):
     return FileResponse(os.path.join(STATIC_DIR, "main.html"))
 
 @app.get("/character")
-def main_page(request: Request):
+def character_page(request: Request):
     if not get_user(request):
         return RedirectResponse("/login")
     return FileResponse(os.path.join(STATIC_DIR, "character.html"))
@@ -287,12 +319,19 @@ def collect_event(ev: UserEvent):
         "login_time": ev.login_time or "",
         "logout_time": ev.logout_time or "",
         "duration_seconds": ev.duration_seconds or "",
+        "stage_number": ev.stage_number,
+        "x_position": ev.x_position,
+        "y_position": ev.y_position,
+        "extra": ev.extra or {},
     }
+
 
     with _csv_lock:
         with open(CSV_PATH, "a", newline="", encoding="utf-8") as f:
             writer = csv.DictWriter(f, fieldnames=CSV_HEADERS)
-            writer.writerow(row)
+            csv_row = {k: row.get(k, "") for k in CSV_HEADERS}
+            writer.writerow(csv_row)
+
 
     update_dashboard_db(row)
     return {"saved": True}

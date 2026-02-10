@@ -107,12 +107,12 @@ export class Mplayer extends Phaser.Physics.Matter.Sprite {
   }
 
   static preload(scene) {
-    scene.load.spritesheet('mChar', 'Escanceaster/Player/male/knight.png', {
+    scene.load.spritesheet('mChar', '/static/assets/Player/male/knight.png', {
       frameWidth: 69,
       frameHeight: 58,
     });
 
-    scene.load.spritesheet('mCharRun', 'Escanceaster/Player/male/run/run.png', {
+    scene.load.spritesheet('mCharRun', '/static/assets/Player/male/run/run.png', {
       frameWidth: 69,
       frameHeight: 58,
     });

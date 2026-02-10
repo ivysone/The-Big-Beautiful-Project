@@ -1,4 +1,4 @@
-import { findSegmentUnder, aStarSegments, edgeBetween } from "../utils/platformPath.js";
+import { findSegmentUnder, aStarSegments, edgeBetween } from "../../utils/platformPath.js";
 
 export class GoblinEnemy extends Phaser.Physics.Matter.Sprite {
   /**
@@ -56,6 +56,9 @@ export class GoblinEnemy extends Phaser.Physics.Matter.Sprite {
     this.meleeRange = 30;     
     this.attackCooldownMs = 2000;
     this.lastAttackTime = -Infinity;
+    this.aggroRange = 160;
+    this.deaggroRange = 320; 
+    this.isAggro = false;
 
     // Attack timing 
     this.attackFps = 12;
@@ -94,7 +97,7 @@ export class GoblinEnemy extends Phaser.Physics.Matter.Sprite {
 
   // ASSET LOADING
   static preload(scene) {
-    scene.load.spritesheet('goblin','assets/enemy/goblin/goblinGreen.png', { 
+    scene.load.spritesheet('goblin','/static/assets/Enemies/goblins/goblinGreen.png', { 
       frameWidth: 84, 
       frameHeight: 64 
     });
@@ -238,8 +241,26 @@ export class GoblinEnemy extends Phaser.Physics.Matter.Sprite {
     const dx = this.target.x - this.x;
     const dy = this.target.y - this.y;
     const dist = Math.hypot(dx, dy);
-
     this.isOnGround = this.computeOnGround();
+    const verticalOK = Math.abs(dy) < 160;
+
+    if (!this.isAggro) {
+      if (dist <= this.aggroRange && verticalOK) this.isAggro = true;
+    } else {
+      if (dist >= this.deaggroRange) {
+        this.isAggro = false;
+        this.path = null;
+        this.setVelocityX(0);
+        if (this.anims.currentAnim?.key !== 'goblin_idle') this.play('goblin_idle', true);
+        return;
+      }
+    }
+
+    if (!this.isAggro) {
+      this.setVelocityX(0);
+      if (this.anims.currentAnim?.key !== 'goblin_idle') this.play('goblin_idle', true);
+      return;
+    }
 
     // face target
     if (dx < 0) {

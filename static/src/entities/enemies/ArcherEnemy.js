@@ -72,12 +72,12 @@ export class ArcherEnemy extends Phaser.Physics.Matter.Sprite {
   }
 
   static preload(scene) {
-    scene.load.spritesheet('archer', 'assets/enemy/archer/archer.png', {
+    scene.load.spritesheet('archer', '/static/assets/Enemies/archers/archer.png', {
       frameWidth: 64,
       frameHeight: 64
     });
 
-    scene.load.image('enemyArrow', 'assets/enemy/archer/arrow.png');
+    scene.load.image('enemyArrow', 'static/assets/Enemies/archers/arrow.png');
   }
 
   initAnimations(scene) {
@@ -228,3 +228,4 @@ export class ArcherEnemy extends Phaser.Physics.Matter.Sprite {
     });
   }
 }
+
