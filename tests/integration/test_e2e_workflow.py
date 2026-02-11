@@ -1,7 +1,3 @@
-"""
-End-to-end integration tests that test the complete workflow
-from API data collection through dashboard visualization.
-"""
 import pytest
 import json
 import sqlite3
@@ -23,16 +19,6 @@ from metrics import normalize_events, funnel_by_stage, time_by_stage, spike_dete
 
 @pytest.mark.integration
 class TestEndToEndWorkflow:
-    """
-    Test the complete workflow from event collection to dashboard analytics.
-    
-    This simulates a real gaming session where:
-    1. Player events are sent to the API
-    2. Events are stored in the database
-    3. Dashboard queries and processes the data
-    4. Analytics are computed
-    """
-    
     def setup_method(self):
         """Set up test environment"""
         self.api_client = TestClient(api_app)
