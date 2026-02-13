@@ -60,7 +60,7 @@ export class GoblinEnemy extends Phaser.Physics.Matter.Sprite {
 
     // AI 
     this.walkSpeed = 2;        
-    this.meleeRange = 30;     
+    this.meleeRange = 40;     
     this.attackCooldownMs = 2000;
     this.lastAttackTime = -Infinity;
     this.aggroRange = 160;
@@ -158,13 +158,11 @@ export class GoblinEnemy extends Phaser.Physics.Matter.Sprite {
     const Matter = Phaser.Physics.Matter.Matter;
     const bodies = this.scene.matter.world.localWorld.bodies;
 
-    // tweak these numbers to match your goblin's body height
     const start = { x: this.x, y: this.y + 18 };
     const end   = { x: this.x, y: this.y + 30 };
 
     const hits = Matter.Query.ray(bodies, start, end);
 
-    // ignore self and sensors
     const hit = hits.find(h =>
       h.body !== this.body &&
       h.body !== this.mainBody &&
@@ -223,6 +221,21 @@ export class GoblinEnemy extends Phaser.Physics.Matter.Sprite {
     this.isOnGround = this.groundContacts > 0;
   }
 
+  stun(ms = 800) {
+    const now = this.scene.time.now;
+    this.stunnedUntil = Math.max(this.stunnedUntil ?? 0, now + ms);
+
+    this.setTint?.(0xFFFFFF);
+
+    this.setVelocity?.(-2 * this.facing, 1);
+    this.setAngularVelocity?.(0);
+  }
+
+  isStunned() {
+    return (this.stunnedUntil ?? 0) > this.scene.time.now;
+  }
+
+
   // MELEE SENSOR 
   setMeleeActive(active) {
     if (!this.meleeSensor) return;
@@ -245,7 +258,17 @@ export class GoblinEnemy extends Phaser.Physics.Matter.Sprite {
   //  AI / UPDATE
   preUpdate(time, delta) {
     super.preUpdate(time, delta);
+
     if (this.isDead || !this.target) return;
+
+    if (this.isStunned(this.scene.time.now)) {
+      return;
+    }
+
+    if (this.stunnedUntil && this.stunnedUntil <= this.scene.time.now) {
+      this.clearTint?.();
+      this.stunnedUntil = 0;
+    }
 
     if (this.meleeActive) this.updateMeleePosition();
 

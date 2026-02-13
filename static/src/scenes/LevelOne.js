@@ -182,14 +182,24 @@ export class LevelOne extends Phaser.Scene {
         if (objA === this.player && bodyB?.isEnemyMeleeHitbox) {
           const owner = bodyB.owner;
           const dmg = Math.round(8 * (this.difficulty.playerIncomingDamageMult ?? 1));
-          this.player.receiveHit({ damage: dmg, source: { x: owner?.x ?? this.player.x, y: owner?.y ?? this.player.y }, canBeParried: true });
-          this.maybeLogDeath("Goblin");
+          const result = this.player.receiveHit({ damage: dmg, source: { x: owner?.x ?? this.player.x, y: owner?.y ?? this.player.y }, canBeParried: true });
+          if (result?.parried) {
+            owner?.stun?.(2000, this.time.now);
+            sendTelemetry("parry_success", { stage_number: 1, extra: { enemy: owner?.constructor?.name ?? "unknown" } });
+          } else {
+            this.maybeLogDeath("Goblin");
+          }
         }
         else if (objB === this.player && bodyA?.isEnemyMeleeHitbox) {
           const owner = bodyA.owner;
           const dmg = Math.round(8 * (this.difficulty.playerIncomingDamageMult ?? 1));
-          this.player.receiveHit({ damage: dmg, source: { x: owner?.x ?? this.player.x, y: owner?.y ?? this.player.y }, canBeParried: true });
-          this.maybeLogDeath("Goblin");
+          const result = this.player.receiveHit({ damage: dmg, source: { x: owner?.x ?? this.player.x, y: owner?.y ?? this.player.y }, canBeParried: true });
+          if (result?.parried) {
+            owner?.stun?.(2000, this.time.now);
+            sendTelemetry("parry_success", { stage_number: 1, extra: { enemy: owner?.constructor?.name ?? "unknown" } });
+          } else {
+            this.maybeLogDeath("Goblin");
+          }
         }
 
         // arrow hits player
@@ -267,7 +277,6 @@ export class LevelOne extends Phaser.Scene {
       const body = t.physics?.matterBody?.body;
       if (body) {
         body.collisionFilter.category = CATS.WORLD;
-        body.collisionFilter.mask = 0xFFFFFFFF; // fine
       }
     });
 

@@ -188,7 +188,6 @@ export class ArcherEnemy extends Phaser.Physics.Matter.Sprite {
     
     arrow.body.collisionFilter.category = CATS.ENEMY_ATK;
     arrow.body.collisionFilter.mask = CATS.PLAYER | CATS.WORLD;
-    arrow.setSensor(true);
 
     arrow.isEnemyProjectile = true;
     arrow.setFixedRotation();

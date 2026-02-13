@@ -60,7 +60,7 @@ export class Mplayer extends Phaser.Physics.Matter.Sprite {
     this.isBlocking = false;
     this.blockStartTime = 0;
 
-    this.parryWindowMs = 180;
+    this.parryWindowMs = 300;
     this.parrySuccess = false;
     this.parryLockMs = 250;
 
@@ -287,7 +287,7 @@ export class Mplayer extends Phaser.Physics.Matter.Sprite {
         this.scene.time.delayedCall(this.parryLockMs, () => (this.locked = false));
 
         this.scene.events.emit('player:parry');
-        return { outcome: 'parry', damageTaken: 0 };
+        return { outcome: 'parry', damageTaken: 0, parried: this.parrySuccess};
       }
 
       if (!this.spendStamina(this.blockStaminaCost)) {
