@@ -1,4 +1,5 @@
 import { findSegmentUnder, aStarSegments, edgeBetween } from "../../utils/platformPath.js";
+import { CATS } from "../../utils/physicsCategories.js";
 
 export class GoblinEnemy extends Phaser.Physics.Matter.Sprite {
   /**
@@ -30,6 +31,12 @@ export class GoblinEnemy extends Phaser.Physics.Matter.Sprite {
     this.setExistingBody(compoundBody);
     this.setFixedRotation();
     this.setFrictionAir(0.05);
+
+    for (const part of this.body.parts) {
+      part.collisionFilter.category = CATS.ENEMY;
+      part.collisionFilter.mask = CATS.WORLD | CATS.NPC | CATS.PLAYER_ATK;
+    }
+
 
     this.setOrigin(0.5, 0.68);
 
@@ -80,7 +87,6 @@ export class GoblinEnemy extends Phaser.Physics.Matter.Sprite {
     this.jumpCooldownMs = 700;
     this.lastJumpTime = -Infinity;
 
-
     // Melee sensor
     this.meleeSensor = scene.matter.add.rectangle(x, y, 36, 28, {
       isSensor: true,
@@ -89,6 +95,11 @@ export class GoblinEnemy extends Phaser.Physics.Matter.Sprite {
     this.meleeSensor.isEnemyMeleeHitbox = true; 
     this.meleeSensor.owner = this;        
     this.setMeleeActive(false);
+
+    this.meleeSensor.isSensor = true;
+    this.meleeSensor.collisionFilter.category = CATS.ENEMY_ATK;
+    this.meleeSensor.collisionFilter.mask = CATS.PLAYER;
+
 
     // Animations
     this.initAnimations(scene);
@@ -402,6 +413,12 @@ export class GoblinEnemy extends Phaser.Physics.Matter.Sprite {
     this.setStatic(true);
     this.setMeleeActive(false);
 
+    const ss = this.scene.stageState;
+    if (ss) {
+      ss.enemiesRemaining = Math.max(0, (ss.enemiesRemaining ?? 0) - 1);
+      if (ss.enemiesRemaining === 0) ss.stageCleared = true;
+    }
+
     this.play('goblin_death');
 
     this.once(Phaser.Animations.Events.ANIMATION_COMPLETE_KEY + 'goblin_death', () => {
@@ -410,14 +427,24 @@ export class GoblinEnemy extends Phaser.Physics.Matter.Sprite {
   }
 
   destroy(fromScene) {
-    this.scene.matter.world.off('collisionstart', this.handleCollStart, this);
-    this.scene.matter.world.off('collisionend', this.handleCollEnd, this);
+    const scene = this.scene;
+    const world = scene?.matter?.world;
 
-    if (this.meleeSensor) {
-      this.scene.matter.world.remove(this.meleeSensor);
+    // If the scene is already shutting down / gone, skip Matter cleanup safely
+    if (world) {
+      world.off('collisionstart', this.handleCollStart, this);
+      world.off('collisionend', this.handleCollEnd, this);
+
+      if (this.meleeSensor) {
+        world.remove(this.meleeSensor);
+        this.meleeSensor = null;
+      }
+    } else {
+      // still null it so we don't hold refs
       this.meleeSensor = null;
     }
 
     super.destroy(fromScene);
   }
+
 }
