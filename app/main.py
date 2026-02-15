@@ -62,7 +62,8 @@ def get_user(request: Request) -> Optional[str]:
 CSV_HEADERS = [
     "timestamp",
     "event_type",
-    "username",
+    "user_id",            # Changed from "username"
+    "session_id",         # NEW COLUMN 
     "password_hash",
     "mode_level_choice",
     "character_choice",
@@ -70,6 +71,7 @@ CSV_HEADERS = [
     "logout_time",
     "duration_seconds",
 ]
+
 _csv_lock = threading.Lock()
 
 def ensure_csv_exists():
