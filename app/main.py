@@ -9,8 +9,11 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from itsdangerous import URLSafeSerializer, BadSignature
 
+from pathlib import Path
+
 from starlette.middleware.wsgi import WSGIMiddleware
 import dashboard.app as dash_entry
+
 
 
 # App + middleware
@@ -24,9 +27,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Paths
-BASE_DIR = os.path.dirname(os.path.dirname(__file__))  # project root
-STATIC_DIR = os.path.join(BASE_DIR, "static")
+BASE_DIR = Path(__file__).resolve().parent.parent  # /app
+STATIC_DIR = BASE_DIR / "static"
+
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
 DATA_DIR = os.path.join(BASE_DIR, "data")
 os.makedirs(DATA_DIR, exist_ok=True)
 

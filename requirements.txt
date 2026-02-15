@@ -3,3 +3,5 @@ plotly==5.22.0
 pandas==2.2.2
 fastapi
 uvicorn[standard]
+python-multipart
+

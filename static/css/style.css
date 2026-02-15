@@ -43,7 +43,7 @@ body.pixel-bg::after{
 }
 
 body.pixel-bg::before{
-  background:url('assets/background.png') center/cover no-repeat;
+  background:url('/static/assets/background.png') center/cover no-repeat;
   z-index:-2;
 }
 
