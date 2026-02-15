@@ -1,5 +1,6 @@
 import { Start } from './scenes/Start.js';
 import { LevelOne } from './scenes/LevelOne.js';
+import { LevelTwo } from './scenes/LevelTwo.js';
 
 const config = {
     type: Phaser.AUTO,
@@ -11,6 +12,7 @@ const config = {
     backgroundColor: '#000000',
     pixelArt: true,
     scene: [
+        LevelTwo,
         LevelOne,
         Start
     ],
