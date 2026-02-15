@@ -12,7 +12,7 @@ import { CATS } from "../utils/physicsCategories.js";
 import { getDifficultyConfig } from "../config/difficulty.js";
 
 const AssetKeys = {
-  BACKGROUND: 'background',
+  BACKGROUND: 'bg_desert',
   DUNE1: 'dune_1',
   DUNE2: 'dune_2',
   DUNE3: 'dune_3',
@@ -36,7 +36,7 @@ export class LevelOne extends Phaser.Scene {
     this.load.image(AssetKeys.HP, '/static/assets/UI/HUD/redbar.png');
     this.load.image(AssetKeys.ST, '/static/assets/UI/HUD/Bluebar.png');
 
-    this.load.image('tiles', '/static/assets/LevelDesign/DesertTiles/DesertLevel.png');
+    this.load.image('tiles_desert', '/static/assets/LevelDesign/DesertTiles/DesertLevel.png');
     this.load.tilemapTiledJSON('desert', '/static/assets/maps/desertMap.tmj');
 
     this.load.image('peasant_portrait', '/static/assets/NPCs/peasant/peasantPortrait.png');
@@ -262,7 +262,7 @@ export class LevelOne extends Phaser.Scene {
 
   createWorld() {
     this.map = this.make.tilemap({ key: 'desert' });
-    const tileset = this.map.addTilesetImage('DesertLevel', 'tiles');
+    const tileset = this.map.addTilesetImage('DesertLevel', 'tiles_desert');
 
     this.backTiles   = this.map.createLayer('Background', tileset, 0, 0);
     this.groundLayer = this.map.createLayer('Floor', tileset, 0, 0);
