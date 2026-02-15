@@ -1,3 +1,5 @@
+import { CATS } from "../utils/physicsCategories.js";
+
 export class Mplayer extends Phaser.Physics.Matter.Sprite {
   constructor(scene, x, y) {
     super(scene.matter.world, x, y, 'mChar');
@@ -24,6 +26,12 @@ export class Mplayer extends Phaser.Physics.Matter.Sprite {
     this.setExistingBody(compoundBody);
     this.setFixedRotation();
     this.setFrictionAir(0.02);
+
+    for (const part of this.body.parts) {
+      part.collisionFilter.category = CATS.PLAYER;
+      part.collisionFilter.mask = CATS.WORLD | CATS.NPC | CATS.ENEMY_ATK; 
+    }
+
 
     this.setOrigin(0.35, 0.65);
 
@@ -52,7 +60,7 @@ export class Mplayer extends Phaser.Physics.Matter.Sprite {
     this.isBlocking = false;
     this.blockStartTime = 0;
 
-    this.parryWindowMs = 180;
+    this.parryWindowMs = 300;
     this.parrySuccess = false;
     this.parryLockMs = 250;
 
@@ -72,11 +80,12 @@ export class Mplayer extends Phaser.Physics.Matter.Sprite {
     this.attackStage = 0;
     this.comboQueued = false;
     this.attackId = 0;
+    this.dmg = 7;
 
     this.flipX = true;
 
     // Lock
-    this.locked = false;
+    this.inputEnabled = false;
 
     // Sword Sensor
     this.swordSensor = scene.matter.add.rectangle(x, y, 1, 1, {
@@ -86,6 +95,10 @@ export class Mplayer extends Phaser.Physics.Matter.Sprite {
     this.swordSensor.gameObject = this.swordSensor;
     this.isHitboxActive = false;
     this.setSwordSensorActive(false);
+
+    this.swordSensor.collisionFilter.category = CATS.PLAYER_ATK;
+    this.swordSensor.collisionFilter.mask = CATS.ENEMY;
+
 
     // Inputs
     this.keys = scene.input.keyboard.addKeys({
@@ -116,6 +129,10 @@ export class Mplayer extends Phaser.Physics.Matter.Sprite {
       frameWidth: 69,
       frameHeight: 58,
     });
+  }
+
+  setInputEnabled(enabled) {
+    this.inputEnabled = enabled;
   }
 
   handleCollStart(event) {
@@ -149,10 +166,26 @@ export class Mplayer extends Phaser.Physics.Matter.Sprite {
   }
 
   destroy(fromScene) {
-    this.scene.matter.world.off('collisionstart', this.handleCollStart, this);
-    this.scene.matter.world.off('collisionend', this.handleCollEnd, this);
+    const scene = this.scene;
+    const world = scene?.matter?.world;
+
+    // If the scene is already shutting down / gone, skip Matter cleanup safely
+    if (world) {
+      world.off('collisionstart', this.handleCollStart, this);
+      world.off('collisionend', this.handleCollEnd, this);
+
+      if (this.meleeSensor) {
+        world.remove(this.meleeSensor);
+        this.meleeSensor = null;
+      }
+    } else {
+      // still null it so we don't hold refs
+      this.meleeSensor = null;
+    }
+
     super.destroy(fromScene);
   }
+
 
   // enable/disable sword sensor
   setSwordSensorActive(active) {
@@ -254,7 +287,7 @@ export class Mplayer extends Phaser.Physics.Matter.Sprite {
         this.scene.time.delayedCall(this.parryLockMs, () => (this.locked = false));
 
         this.scene.events.emit('player:parry');
-        return { outcome: 'parry', damageTaken: 0 };
+        return { outcome: 'parry', damageTaken: 0, parried: this.parrySuccess};
       }
 
       if (!this.spendStamina(this.blockStaminaCost)) {
@@ -437,6 +470,12 @@ export class Mplayer extends Phaser.Physics.Matter.Sprite {
   }
 
   update(deltaMs = 16.6) {
+
+    if (!this.inputEnabled) {
+      this.setVelocityX(0);
+      return;
+    }
+
     if (this.locked || this.isDead) return;
 
     const speed = 3.2;

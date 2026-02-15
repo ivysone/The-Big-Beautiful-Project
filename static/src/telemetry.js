@@ -1,3 +1,5 @@
+import { getSelectedDifficultyId } from "./config/difficulty.js";
+
 let cachedMe = null;
 
 export async function getMe() {
@@ -8,6 +10,8 @@ export async function getMe() {
 }
 
 export async function sendTelemetry(event_type, payload = {}) {
+  const config_id = getSelectedDifficultyId();
+
   const me = await getMe();
   if (!me.logged_in) return;
 
@@ -15,6 +19,7 @@ export async function sendTelemetry(event_type, payload = {}) {
     event_type,
     username: me.username,
     timestamp: new Date().toISOString(),
+    config_id,
     ...payload
   };
 

@@ -1,4 +1,5 @@
 import { findSegmentUnder, aStarSegments, edgeBetween } from "../../utils/platformPath.js";
+import { CATS } from "../../utils/physicsCategories.js";
 
 export class GoblinEnemy extends Phaser.Physics.Matter.Sprite {
   /**
@@ -31,6 +32,12 @@ export class GoblinEnemy extends Phaser.Physics.Matter.Sprite {
     this.setFixedRotation();
     this.setFrictionAir(0.05);
 
+    for (const part of this.body.parts) {
+      part.collisionFilter.category = CATS.ENEMY;
+      part.collisionFilter.mask = CATS.WORLD | CATS.NPC | CATS.PLAYER_ATK;
+    }
+
+
     this.setOrigin(0.5, 0.68);
 
     Phaser.Physics.Matter.Matter.Body.setPosition(this.body, { x, y });
@@ -45,15 +52,15 @@ export class GoblinEnemy extends Phaser.Physics.Matter.Sprite {
     scene.matter.world.on('collisionend', this.handleCollEnd, this);
 
     // Stats 
-    this.maxHealth = 3;
-    this.health = 3;
+    this.maxHP = 30;
+    this.hp = 30;
     this.isDead = false;
 
     this.lastHitAttackId = -1;
 
     // AI 
     this.walkSpeed = 2;        
-    this.meleeRange = 30;     
+    this.meleeRange = 40;     
     this.attackCooldownMs = 2000;
     this.lastAttackTime = -Infinity;
     this.aggroRange = 160;
@@ -80,7 +87,6 @@ export class GoblinEnemy extends Phaser.Physics.Matter.Sprite {
     this.jumpCooldownMs = 700;
     this.lastJumpTime = -Infinity;
 
-
     // Melee sensor
     this.meleeSensor = scene.matter.add.rectangle(x, y, 36, 28, {
       isSensor: true,
@@ -89,6 +95,11 @@ export class GoblinEnemy extends Phaser.Physics.Matter.Sprite {
     this.meleeSensor.isEnemyMeleeHitbox = true; 
     this.meleeSensor.owner = this;        
     this.setMeleeActive(false);
+
+    this.meleeSensor.isSensor = true;
+    this.meleeSensor.collisionFilter.category = CATS.ENEMY_ATK;
+    this.meleeSensor.collisionFilter.mask = CATS.PLAYER;
+
 
     // Animations
     this.initAnimations(scene);
@@ -147,13 +158,11 @@ export class GoblinEnemy extends Phaser.Physics.Matter.Sprite {
     const Matter = Phaser.Physics.Matter.Matter;
     const bodies = this.scene.matter.world.localWorld.bodies;
 
-    // tweak these numbers to match your goblin's body height
     const start = { x: this.x, y: this.y + 18 };
     const end   = { x: this.x, y: this.y + 30 };
 
     const hits = Matter.Query.ray(bodies, start, end);
 
-    // ignore self and sensors
     const hit = hits.find(h =>
       h.body !== this.body &&
       h.body !== this.mainBody &&
@@ -212,6 +221,21 @@ export class GoblinEnemy extends Phaser.Physics.Matter.Sprite {
     this.isOnGround = this.groundContacts > 0;
   }
 
+  stun(ms = 800) {
+    const now = this.scene.time.now;
+    this.stunnedUntil = Math.max(this.stunnedUntil ?? 0, now + ms);
+
+    this.setTint?.(0xFFFFFF);
+
+    this.setVelocity?.(-2 * this.facing, 1);
+    this.setAngularVelocity?.(0);
+  }
+
+  isStunned() {
+    return (this.stunnedUntil ?? 0) > this.scene.time.now;
+  }
+
+
   // MELEE SENSOR 
   setMeleeActive(active) {
     if (!this.meleeSensor) return;
@@ -234,7 +258,17 @@ export class GoblinEnemy extends Phaser.Physics.Matter.Sprite {
   //  AI / UPDATE
   preUpdate(time, delta) {
     super.preUpdate(time, delta);
+
     if (this.isDead || !this.target) return;
+
+    if (this.isStunned(this.scene.time.now)) {
+      return;
+    }
+
+    if (this.stunnedUntil && this.stunnedUntil <= this.scene.time.now) {
+      this.clearTint?.();
+      this.stunnedUntil = 0;
+    }
 
     if (this.meleeActive) this.updateMeleePosition();
 
@@ -386,12 +420,12 @@ export class GoblinEnemy extends Phaser.Physics.Matter.Sprite {
   takeDamage(amount) {
     if (this.isDead) return;
 
-    this.health -= amount;
+    this.hp -= amount;
 
     this.setTint(0xff0000);
     this.scene.time.delayedCall(100, () => this.clearTint());
 
-    if (this.health <= 0) this.die();
+    if (this.hp <= 0) this.die();
   }
 
   die() {
@@ -402,6 +436,12 @@ export class GoblinEnemy extends Phaser.Physics.Matter.Sprite {
     this.setStatic(true);
     this.setMeleeActive(false);
 
+    const ss = this.scene.stageState;
+    if (ss) {
+      ss.enemiesRemaining = Math.max(0, (ss.enemiesRemaining ?? 0) - 1);
+      if (ss.enemiesRemaining === 0) ss.stageCleared = true;
+    }
+
     this.play('goblin_death');
 
     this.once(Phaser.Animations.Events.ANIMATION_COMPLETE_KEY + 'goblin_death', () => {
@@ -410,14 +450,24 @@ export class GoblinEnemy extends Phaser.Physics.Matter.Sprite {
   }
 
   destroy(fromScene) {
-    this.scene.matter.world.off('collisionstart', this.handleCollStart, this);
-    this.scene.matter.world.off('collisionend', this.handleCollEnd, this);
+    const scene = this.scene;
+    const world = scene?.matter?.world;
 
-    if (this.meleeSensor) {
-      this.scene.matter.world.remove(this.meleeSensor);
+    // If the scene is already shutting down / gone, skip Matter cleanup safely
+    if (world) {
+      world.off('collisionstart', this.handleCollStart, this);
+      world.off('collisionend', this.handleCollEnd, this);
+
+      if (this.meleeSensor) {
+        world.remove(this.meleeSensor);
+        this.meleeSensor = null;
+      }
+    } else {
+      // still null it so we don't hold refs
       this.meleeSensor = null;
     }
 
     super.destroy(fromScene);
   }
+
 }

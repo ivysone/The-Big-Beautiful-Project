@@ -21,9 +21,9 @@ const AssetKeys = {
   ST: 'stFill',
 };
 
-export class LevelOne extends Phaser.Scene {
+export class LevelTwo extends Phaser.Scene {
   constructor() {
-    super('LevelOne');
+    super('LevelTwo');
   }
 
   preload() {
@@ -36,8 +36,8 @@ export class LevelOne extends Phaser.Scene {
     this.load.image(AssetKeys.HP, '/static/assets/UI/HUD/red bar.png');
     this.load.image(AssetKeys.ST, '/static/assets/UI/HUD/blue bar.png');
 
-    this.load.image('tiles', '/static/assets/LevelDesign/DesertTiles/DesertLevel.png');
-    this.load.tilemapTiledJSON('desert', '/static/assets/maps/desertMap.tmj');
+    this.load.image('tiles', '/static/assets/LevelDesign/combinedTiles.png');
+    this.load.tilemapTiledJSON('forest', '/static/assets/maps/forestMap.tmj');
 
     this.load.image('peasant_portrait', '/static/assets/NPCs/peasant/peasantPortrait.png');
     this.load.image('knight_portrait', '/static/assets/NPCs/knight/knightPortrait.png');
@@ -102,7 +102,7 @@ export class LevelOne extends Phaser.Scene {
     this.npcs.push(new PeasantNpc(this, 350, 972));
     this.npcs.push(new KnightNpc(this, 9470, 1036));
 
-    this.player = new Mplayer(this, 0, 972).setDepth(1000);
+    this.player = new Mplayer(this, 0, 748).setDepth(1000);
 
     // this.testEnemy = new GoblinEnemy(this, 300, 972, { target: this.player, groundLayer: this.groundLayer });
     // this.applyEnemyDifficulty(this.testEnemy);
@@ -136,10 +136,13 @@ export class LevelOne extends Phaser.Scene {
     this.events.on('player:stChanged', (st, maxSt) => this.hud.setStamina(st / maxSt));
 
     this.uiCam.ignore([
-      this.background, this.dune1, this.dune2, this.dune3,
-      groundLayer,
-      this.player,
+    this.background, this.dune1, this.dune2, this.dune3,
+    this.groundLayer,
+    this.treesDecor,
+    this.dmgSources,
+    this.player,
     ]);
+
     
 
     this.scale.on('resize', (size) => this.uiCam.setSize(size.width, size.height));
@@ -149,7 +152,7 @@ export class LevelOne extends Phaser.Scene {
       color: '#00ff00'
     }).setScrollFactor(0).setDepth(9999);
 
-    this.spawnEnemies();
+    //this.spawnEnemies();
 
     this.playIntroCutscene();
   }
@@ -261,18 +264,33 @@ export class LevelOne extends Phaser.Scene {
   }
 
   createWorld() {
-    this.map = this.make.tilemap({ key: 'desert' });
-    const tileset = this.map.addTilesetImage('DesertLevel', 'tiles');
+    this.map = this.make.tilemap({ key: 'forest' });
+    const tileset = this.map.addTilesetImage('combinedTiles', 'tiles');
 
-    this.backTiles   = this.map.createLayer('Background', tileset, 0, 0);
-    this.groundLayer = this.map.createLayer('Floor', tileset, 0, 0);
-    this.sandDecor   = this.map.createLayer('Sand', tileset, 0, 0);
-    this.bushesDecor = this.map.createLayer('Bushes', tileset, 0, 0);
-    this.treesDecor  = this.map.createLayer('Trees', tileset, 0, 0);
-    this.dmgSources  = this.map.createLayer('DMG', tileset, 0, 0);
+    this.groundLayer = this.map.createLayer('floor', tileset, 0, 0);
+    this.treesDecor  = this.map.createLayer('treeDecor', tileset, 0, 0);
+    this.dmgSources  = this.map.createLayer('damage', tileset, 0, 0);
 
+    // mark colliding tiles (support both property names used in your tileset)
     this.groundLayer.setCollisionByProperty({ collides: true });
-    this.matter.world.convertTilemapLayer(this.groundLayer);
+    this.groundLayer.setCollisionByProperty({ collision: true });
+
+    // Create Matter bodies manually (safe even if tiles are flipped/rotated)
+    this.groundLayer.forEachTile(t => {
+    if (!t.collides) return;
+
+    const body = this.matter.add.rectangle(
+        t.getCenterX(),
+        t.getCenterY(),
+        t.width,
+        t.height,
+        { isStatic: true }
+    );
+
+    body.collisionFilter.category = CATS.WORLD;
+    body.collisionFilter.mask = 0xFFFFFFFF; // or whatever you use globally
+    });
+
     this.groundLayer.forEachTile(t => {
       const body = t.physics?.matterBody?.body;
       if (body) {
@@ -580,5 +598,3 @@ export class LevelOne extends Phaser.Scene {
     );
   }
 }
-
-

@@ -1,3 +1,5 @@
+import { CATS } from "../../utils/physicsCategories.js";
+
 export class ArcherEnemy extends Phaser.Physics.Matter.Sprite {
   /**
    * @param {Phaser.Scene} scene
@@ -34,14 +36,20 @@ export class ArcherEnemy extends Phaser.Physics.Matter.Sprite {
     this.setFixedRotation();
     this.setFrictionAir(0.04);
 
+    for (const part of this.body.parts) {
+      part.collisionFilter.category = CATS.ENEMY;
+      part.collisionFilter.mask = CATS.WORLD | CATS.NPC | CATS.PLAYER_ATK;
+    }
+
+
     Phaser.Physics.Matter.Matter.Body.setPosition(this.body, { x, y });
 
     this.mainBody = mainBody;
     this.footSensor = footSensor;
 
     // Stats
-    this.maxHealth = 3;
-    this.health = 3;
+    this.maxHP = 15;
+    this.hp = 15;
     this.isDead = false;
 
     // Sword overlap guard
@@ -68,7 +76,7 @@ export class ArcherEnemy extends Phaser.Physics.Matter.Sprite {
     this.setScale(1, 1);
 
     this.initAnimations(scene);
-    this.play('idleA');
+    this.play('archer_idle');
   }
 
   static preload(scene) {
@@ -81,27 +89,27 @@ export class ArcherEnemy extends Phaser.Physics.Matter.Sprite {
   }
 
   initAnimations(scene) {
-    if (!scene.anims.exists('idleA')) {
+    if (!scene.anims.exists('archer_idle')) {
       scene.anims.create({
-        key: 'idleA',
+        key: 'archer_idle',
         frames: scene.anims.generateFrameNumbers('archer', { start: 0, end: 4 }),
         frameRate: 5,
         repeat: -1
       });
     }
 
-    if (!scene.anims.exists('deathA')) {
+    if (!scene.anims.exists('archer_death')) {
       scene.anims.create({
-        key: 'deathA',
+        key: 'archer_death',
         frames: scene.anims.generateFrameNumbers('archer', { start: 45, end: 50 }),
         frameRate: 6,
         repeat: 0
       });
     }
 
-    if (!scene.anims.exists('attackA')) {
+    if (!scene.anims.exists('archer_attack')) {
       scene.anims.create({
-        key: 'attackA',
+        key: 'archer_attack',
         frames: scene.anims.generateFrameNumbers('archer', { start: 12, end: 21 }),
         frameRate: 10,
         repeat: 0
@@ -152,7 +160,7 @@ export class ArcherEnemy extends Phaser.Physics.Matter.Sprite {
     this.isShooting = true;
     this.setVelocityX(0);
 
-    this.play('attackA', true);
+    this.play('archer_attack', true);
 
     const delayMs = (this.releaseFrame / this.attackFps) * 1000;
 
@@ -169,14 +177,17 @@ export class ArcherEnemy extends Phaser.Physics.Matter.Sprite {
       this.spawnArrow(vx, vy);
     });
 
-    this.once(Phaser.Animations.Events.ANIMATION_COMPLETE_KEY + 'attackA', () => {
+    this.once(Phaser.Animations.Events.ANIMATION_COMPLETE_KEY + 'archer_attack', () => {
       this.isShooting = false;
-      if (!this.isDead) this.play('idleA', true);
+      if (!this.isDead) this.play('archer_idle', true);
     });
   }
 
   spawnArrow(vx, vy) {
     const arrow = this.scene.matter.add.image(this.x, this.y - 5, 'enemyArrow');
+    
+    arrow.body.collisionFilter.category = CATS.ENEMY_ATK;
+    arrow.body.collisionFilter.mask = CATS.PLAYER | CATS.WORLD;
 
     arrow.isEnemyProjectile = true;
     arrow.setFixedRotation();
@@ -193,12 +204,12 @@ export class ArcherEnemy extends Phaser.Physics.Matter.Sprite {
   takeDamage(amount) {
     if (this.isDead) return;
 
-    this.health -= amount;
+    this.hp -= amount;
 
     this.setTint(0xff0000);
     this.scene.time.delayedCall(100, () => this.clearTint());
 
-    if (this.health <= 0) this.die();
+    if (this.hp <= 0) this.die();
   }
 
   stun(ms = 600) {
@@ -215,15 +226,20 @@ export class ArcherEnemy extends Phaser.Physics.Matter.Sprite {
 
   die() {
     if (this.isDead) return;
-
     this.isDead = true;
 
     this.setVelocity(0, 0);
     this.setStatic(true);
 
-    this.play('deathA');
+    const ss = this.scene.stageState;
+    if (ss) {
+      ss.enemiesRemaining = Math.max(0, (ss.enemiesRemaining ?? 0) - 1);
+      if (ss.enemiesRemaining === 0) ss.stageCleared = true;
+    }
 
-    this.once(Phaser.Animations.Events.ANIMATION_COMPLETE_KEY + 'deathA', () => {
+    this.play('archer_death');
+
+    this.once(Phaser.Animations.Events.ANIMATION_COMPLETE_KEY + 'archer_death', () => {
       this.destroy();
     });
   }

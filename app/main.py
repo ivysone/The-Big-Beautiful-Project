@@ -199,7 +199,6 @@ def update_dashboard_db(row_data):
             """, (
                 user_id,
                 session_id,
-                "stage_complete",
                 complete_data,
                 stage_number,
                 row_data["logout_time"] or row_data["timestamp"]
@@ -306,7 +305,6 @@ def api_me(request: Request):
 @app.get("/api/health")
 def health():
     return {"ok": True}
-
 @app.post("/api/collect")
 def collect_event(ev: UserEvent):
     ensure_csv_exists()
