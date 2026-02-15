@@ -35,17 +35,20 @@ app.layout = html.Div([
     dcc.Tabs([
         dcc.Tab(label="Overview", children=[
             html.Div(id="kpi-row", style={"display": "flex", "gap": "12px", "marginTop": "12px"}),
-            dcc.Graph(id="spike-table"),
-            dcc.Graph(id="time-curve"),
+            # dcc.Graph(id="spike-table"),
+            # dcc.Graph(id="time-curve"),
         ]),
         dcc.Tab(label="Funnel", children=[
             dcc.Graph(id="funnel-graph"),
-            dcc.Graph(id="fail-drop-graph"),
+            # dcc.Graph(id="fail-drop-graph"),
         ]),
         dcc.Tab(label="Heatmap", children=[
             dcc.Graph(id="death-heatmap"),
         ]),
-        dcc.Tab(label="Balance (Sprint 2)", children=[
+        dcc.Tab(label="(Sprint 2-1)", children=[
+            dcc.Graph(id="balance-table"),
+        ]),
+        dcc.Tab(label="(Sprint 2-2)", children=[
             dcc.Graph(id="balance-table"),
         ]),
     ])
