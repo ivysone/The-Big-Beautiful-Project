@@ -3,8 +3,10 @@ import sqlite3
 import pandas as pd
 
 def get_db_path() -> str:
-    # Use real_game.db instead of demo_game.db
-    return os.getenv("GAME_DB_PATH", "./real_game.db")
+    # Render / Railway / Fly will set DB_PATH
+    # Local dev falls back to dashboard/real_game.db
+    return os.environ.get("DB_PATH", "dashboard/real_game.db")
+
 
 def query_df(sql: str, params: tuple = ()) -> pd.DataFrame:
     db_path = get_db_path()
