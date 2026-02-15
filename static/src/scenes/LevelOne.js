@@ -12,7 +12,7 @@ import { CATS } from "../utils/physicsCategories.js";
 import { getDifficultyConfig } from "../config/difficulty.js";
 
 const AssetKeys = {
-  BACKGROUND: 'background',
+  BACKGROUND: 'bg_desert',
   DUNE1: 'dune_1',
   DUNE2: 'dune_2',
   DUNE3: 'dune_3',
@@ -27,16 +27,16 @@ export class LevelOne extends Phaser.Scene {
   }
 
   preload() {
-    this.load.image(AssetKeys.BACKGROUND, '/static/assets/LevelDesign/DesertTiles/background/Background layer.png');
-    this.load.image(AssetKeys.DUNE1, '/static/assets/LevelDesign/DesertTiles/background/Back layer.png');
-    this.load.image(AssetKeys.DUNE2, '/static/assets/LevelDesign/DesertTiles/background/Middle Layer.png');
-    this.load.image(AssetKeys.DUNE3, '/static/assets/LevelDesign/DesertTiles/background/Front Layer.png');
+    this.load.image(AssetKeys.BACKGROUND, '/static/assets/LevelDesign/DesertTiles/background/Backgroundlayer.png');
+    this.load.image(AssetKeys.DUNE1, '/static/assets/LevelDesign/DesertTiles/background/Backlayer.png');
+    this.load.image(AssetKeys.DUNE2, '/static/assets/LevelDesign/DesertTiles/background/Middlelayer.png');
+    this.load.image(AssetKeys.DUNE3, '/static/assets/LevelDesign/DesertTiles/background/Frontlayer.png');
 
-    this.load.image(AssetKeys.FRAME, '/static/assets/UI/HUD/Hp bar.png');
-    this.load.image(AssetKeys.HP, '/static/assets/UI/HUD/red bar.png');
-    this.load.image(AssetKeys.ST, '/static/assets/UI/HUD/blue bar.png');
+    this.load.image(AssetKeys.FRAME, '/static/assets/UI/HUD/Hpbar.png');
+    this.load.image(AssetKeys.HP, '/static/assets/UI/HUD/redbar.png');
+    this.load.image(AssetKeys.ST, '/static/assets/UI/HUD/Bluebar.png');
 
-    this.load.image('tiles', '/static/assets/LevelDesign/DesertTiles/DesertLevel.png');
+    this.load.image('tiles_desert', '/static/assets/LevelDesign/DesertTiles/DesertLevel.png');
     this.load.tilemapTiledJSON('desert', '/static/assets/maps/desertMap.tmj');
 
     this.load.image('peasant_portrait', '/static/assets/NPCs/peasant/peasantPortrait.png');
@@ -262,7 +262,7 @@ export class LevelOne extends Phaser.Scene {
 
   createWorld() {
     this.map = this.make.tilemap({ key: 'desert' });
-    const tileset = this.map.addTilesetImage('DesertLevel', 'tiles');
+    const tileset = this.map.addTilesetImage('DesertLevel', 'tiles_desert');
 
     this.backTiles   = this.map.createLayer('Background', tileset, 0, 0);
     this.groundLayer = this.map.createLayer('Floor', tileset, 0, 0);
@@ -478,7 +478,7 @@ export class LevelOne extends Phaser.Scene {
     cam.fadeOut(1000, 0, 0, 0);
 
     cam.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
-
+      this.scene.start('LevelTwo');
     });
   }
 

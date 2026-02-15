@@ -12,9 +12,8 @@ const config = {
     backgroundColor: '#000000',
     pixelArt: true,
     scene: [
-        LevelTwo,
         LevelOne,
-        Start
+        LevelTwo,
     ],
     scale: {
         mode: Phaser.Scale.ENVELOP,

@@ -12,10 +12,11 @@ import { CATS } from "../utils/physicsCategories.js";
 import { getDifficultyConfig } from "../config/difficulty.js";
 
 const AssetKeys = {
-  BACKGROUND: 'background',
-  DUNE1: 'dune_1',
-  DUNE2: 'dune_2',
-  DUNE3: 'dune_3',
+  BACKGROUND: 'bg_forest',
+  MOUNTAIN: 'mountain',
+  TREE1: 'tree_1',
+  TREE2: 'tree_2',
+  TREE3: 'tree_3',
   FRAME: 'hudFrame',
   HP: 'hpFill',
   ST: 'stFill',
@@ -27,16 +28,17 @@ export class LevelTwo extends Phaser.Scene {
   }
 
   preload() {
-    this.load.image(AssetKeys.BACKGROUND, '/static/assets/LevelDesign/DesertTiles/background/Background layer.png');
-    this.load.image(AssetKeys.DUNE1, '/static/assets/LevelDesign/DesertTiles/background/Back layer.png');
-    this.load.image(AssetKeys.DUNE2, '/static/assets/LevelDesign/DesertTiles/background/Middle Layer.png');
-    this.load.image(AssetKeys.DUNE3, '/static/assets/LevelDesign/DesertTiles/background/Front Layer.png');
+    this.load.image(AssetKeys.BACKGROUND, '/static/assets/LevelDesign/PlatformerTiles/background/bg/bg_sky.png');
+    this.load.image(AssetKeys.MOUNTAIN, '/static/assets/LevelDesign/PlatformerTiles/background/bg/bg_mountain.png');
+    this.load.image(AssetKeys.TREE3, '/static/assets/LevelDesign/PlatformerTiles/background/bg/bg_trees1.png');
+    this.load.image(AssetKeys.TREE2, '/static/assets/LevelDesign/PlatformerTiles/background/bg/bg_trees2.png');
+    this.load.image(AssetKeys.TREE1, '/static/assets/LevelDesign/PlatformerTiles/background/bg/bg_trees3.png');
 
-    this.load.image(AssetKeys.FRAME, '/static/assets/UI/HUD/Hp bar.png');
-    this.load.image(AssetKeys.HP, '/static/assets/UI/HUD/red bar.png');
-    this.load.image(AssetKeys.ST, '/static/assets/UI/HUD/blue bar.png');
+    this.load.image(AssetKeys.FRAME, '/static/assets/UI/HUD/Hpbar.png');
+    this.load.image(AssetKeys.HP, '/static/assets/UI/HUD/redbar.png');
+    this.load.image(AssetKeys.ST, '/static/assets/UI/HUD/Bluebar.png');
 
-    this.load.image('tiles', '/static/assets/LevelDesign/combinedTiles.png');
+    this.load.image('tiles_forest', '/static/assets/LevelDesign/combinedTiles.png');
     this.load.tilemapTiledJSON('forest', '/static/assets/maps/forestMap.tmj');
 
     this.load.image('peasant_portrait', '/static/assets/NPCs/peasant/peasantPortrait.png');
@@ -102,7 +104,7 @@ export class LevelTwo extends Phaser.Scene {
     this.npcs.push(new PeasantNpc(this, 350, 972));
     this.npcs.push(new KnightNpc(this, 9470, 1036));
 
-    this.player = new Mplayer(this, 0, 748).setDepth(1000);
+    this.player = new Mplayer(this, 0, 0).setDepth(1000);
 
     // this.testEnemy = new GoblinEnemy(this, 300, 972, { target: this.player, groundLayer: this.groundLayer });
     // this.applyEnemyDifficulty(this.testEnemy);
@@ -136,7 +138,7 @@ export class LevelTwo extends Phaser.Scene {
     this.events.on('player:stChanged', (st, maxSt) => this.hud.setStamina(st / maxSt));
 
     this.uiCam.ignore([
-    this.background, this.dune1, this.dune2, this.dune3,
+    this.background, this.mountain, this.tree1, this.tree2, this.tree3,
     this.groundLayer,
     this.treesDecor,
     this.dmgSources,
@@ -253,19 +255,22 @@ export class LevelTwo extends Phaser.Scene {
     this.background = this.add.tileSprite(0, 0, w, h, AssetKeys.BACKGROUND)
       .setOrigin(0, 0).setScrollFactor(0, 0);
 
-    this.dune1 = this.add.tileSprite(0, 150, w, h, AssetKeys.DUNE1)
+    this.mountain = this.add.tileSprite(0, 150, w, h, AssetKeys.MOUNTAIN)
       .setOrigin(0, 0).setScrollFactor(0, 0);
 
-    this.dune2 = this.add.tileSprite(0, 170, w, h, AssetKeys.DUNE2)
+    this.tree1 = this.add.tileSprite(0, 170, w, h, AssetKeys.TREE1)
       .setOrigin(0, 0).setScrollFactor(0, 0).setScale(0.8);
 
-    this.dune3 = this.add.tileSprite(0, 50, w, h, AssetKeys.DUNE3)
+    this.tree2 = this.add.tileSprite(0, 50, w, h, AssetKeys.TREE2)
       .setOrigin(0, 0).setScrollFactor(0, 0).setScale(1.5);
+
+    this.tree3 = this.add.tileSprite(0, 50, w, h, AssetKeys.TREE3)
+      .setOrigin(0, 0).setScrollFactor(0, 0).setScale(1.8);
   }
 
   createWorld() {
     this.map = this.make.tilemap({ key: 'forest' });
-    const tileset = this.map.addTilesetImage('combinedTiles', 'tiles');
+    const tileset = this.map.addTilesetImage('combinedTiles', 'tiles_forest');
 
     this.groundLayer = this.map.createLayer('floor', tileset, 0, 0);
     this.treesDecor  = this.map.createLayer('treeDecor', tileset, 0, 0);
@@ -393,8 +398,8 @@ export class LevelTwo extends Phaser.Scene {
 
     this.tweens.add({
       targets: this.player,
-      x: 300, 
-      duration: 2000,
+      x: 200, 
+      duration: 1500,
       ease: 'Linear',
       onComplete: () => {
         this.player.setVelocityX(0);
@@ -589,9 +594,10 @@ export class LevelTwo extends Phaser.Scene {
 
     const cam = this.cameras.main;
     this.background.tilePositionX = cam.scrollX * 0.05;
-    this.dune1.tilePositionX = cam.scrollX * 0.1;
-    this.dune2.tilePositionX = cam.scrollX * 0.15;
-    this.dune3.tilePositionX = cam.scrollX * 0.18;
+    this.mountain.tilePositionX = cam.scrollX * 0.1;
+    this.tree1.tilePositionX = cam.scrollX * 0.15;
+    this.tree2.tilePositionX = cam.scrollX * 0.18;
+    this.tree3.tilePositionX = cam.scrollX * 0.21;
 
     this.coordText.setText(
       `x: ${Math.round(this.player.x)}\ny: ${Math.round(this.player.y)}`
