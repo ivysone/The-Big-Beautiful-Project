@@ -3,8 +3,6 @@ import sqlite3
 import pandas as pd
 
 def get_db_path() -> str:
-    # Render / Railway / Fly will set DB_PATH
-    # Local dev falls back to dashboard/real_game.db
     return os.environ.get("DB_PATH", "dashboard/real_game.db")
 
 
@@ -20,5 +18,17 @@ def query_df(sql: str, params: tuple = ()) -> pd.DataFrame:
     try:
         df = pd.read_sql_query(sql, conn, params=params)
         return df
+    finally:
+        conn.close()
+
+def execute(sql: str, params: tuple = ()) -> None:
+    """Run INSERT/UPDATE/CREATE statements safely."""
+    db_path = get_db_path()
+    os.makedirs(os.path.dirname(db_path) or ".", exist_ok=True)
+    conn = sqlite3.connect(db_path)
+    try:
+        cur = conn.cursor()
+        cur.execute(sql, params)
+        conn.commit()
     finally:
         conn.close()
