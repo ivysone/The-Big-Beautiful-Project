@@ -184,19 +184,17 @@ def run_simulation(
     n_enemies: int = 15,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
-    ONE-STAGE simulation with unlimited retries.
-
-    Uses your concrete combat stats:
+    Combat stats:
       - Player: 50 HP, 7 base damage
       - Enemies: even split archers/goblins
           * Archer: 15 HP, 5 damage
           * Goblin: 30 HP, 8 damage
 
-    Model (prototype-friendly):
+    Model:
       - Player fights enemies sequentially.
       - While enemies are alive, they deal damage over time (DPS = damage_per_hit * ENEMY_HPS).
       - Player kill speed comes from DPS (player_damage_per_hit * PLAYER_HPS).
-      - Exposure factor models dodging/cover/parry (fraction of incoming damage that actually lands).
+      - Exposure factor models parry/block/dodge.
       - Each attempt fails if sampled damage >= sampled effective HP buffer.
       - After each fail, player may quit with probability p_quit derived from telemetry dropoff_rate.
     """
@@ -242,14 +240,14 @@ def run_simulation(
         stage_id = int(row["stage_id"].iloc[0])
     row = row.iloc[0]
 
-    # --- Telemetry baselines (for pacing + quit) ---
+    # Telemetry baselines 
     base_drop = float(row.get("dropoff_rate", 0.10) or 0.10)
     base_median_ms = float(row.get("median_duration_ms", 60000) or 60000)
 
-    # Quit probability after each fail (keep modest for 1-stage prototype)
+    # Quit probability after each fail
     p_quit = max(0.02, min(0.12, base_drop * 0.4))
 
-    # --- Combat stats (given) ---
+    # Combat stats 
     PLAYER_MAX_HP = 50.0
     PLAYER_BASE_DMG = 7.0
 
@@ -258,14 +256,14 @@ def run_simulation(
     ARCHER_DMG = 5.0
     GOBLIN_DMG = 8.0
 
-    # --- Pacing/variance knobs (tune for feel) ---
+    # Pacing/variance knobs
     OVERHEAD_FRAC = 0.20     # non-combat time fraction
-    PLAYER_HPS = 1.2         # player hits per second
-    ENEMY_HPS = 0.8          # enemy attacks per second
-    EXPOSURE = 0.225          # fraction of enemy damage that lands (dodges/cover/parries)
+    PLAYER_HPS = 1.5         # player hits per second
+    ENEMY_HPS = 0.6         # enemy attacks per second
+    EXPOSURE = 0.4          # % damage that lands
     SKILL_SIGMA = 0.18       # player-to-player variability
     DMG_NOISE_SIGMA = 0.30   # attempt-to-attempt variability
-    HP_BUFFER_MIN = 0.90     # effective HP buffer range (potions/iframes/defense)
+    HP_BUFFER_MIN = 0.90     # effective HP buffer range
     HP_BUFFER_MAX = 1.10
 
     # Enemy counts (even split-ish)
@@ -273,7 +271,6 @@ def run_simulation(
     N_ARCHERS = N_TOTAL // 2
     N_GOBLINS = N_TOTAL - N_ARCHERS
 
-    # Baseline time decomposition for overhead sampling
     base_overhead_ms = base_median_ms * OVERHEAD_FRAC
     if base_overhead_ms < 500:
         base_overhead_ms = 500.0  # avoid degenerate overhead
@@ -291,7 +288,6 @@ def run_simulation(
         duration_ms = 0.0
         completed = 0
 
-        # hard safety cap (shouldn't hit with quit enabled)
         for _ in range(200):
             attempts += 1
 
@@ -314,22 +310,22 @@ def run_simulation(
             t_archer = archer_hp / max(0.1, player_dps)
             t_goblin = goblin_hp / max(0.1, player_dps)
 
-            # Expected incoming damage during combat (then apply EXPOSURE)
+            # Expected incoming damage during combat
             expected_damage = EXPOSURE * (
                 (N_ARCHERS * t_archer * archer_dps) +
                 (N_GOBLINS * t_goblin * goblin_dps)
             )
 
-            # Add attempt variance (positioning, RNG, mistakes)
+            # Add attempt variance
             damage = expected_damage * math.exp(rng.gauss(0.0, DMG_NOISE_SIGMA))
 
-            # Effective HP buffer (defensive play / consumables / clutch)
+            # Effective HP buffer
             hp_buffer = PLAYER_MAX_HP * (HP_BUFFER_MIN + (HP_BUFFER_MAX - HP_BUFFER_MIN) * rng.random())
 
             # Determine fail
             failed = damage >= hp_buffer
 
-            # Derive a smooth fail-prob estimate for reporting/charts (not used for RNG)
+            # Derive a smooth fail-prob estimate for reporting/charts
             # ratio = 0 means damage equals HP; >0 means likely fail.
             ratio = (damage - PLAYER_MAX_HP) / max(1e-6, PLAYER_MAX_HP)
             p_fail_est = _sigmoid(4.0 * ratio)   # 4.0 controls steepness
