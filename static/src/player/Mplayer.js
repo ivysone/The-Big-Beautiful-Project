@@ -264,6 +264,14 @@ export class Mplayer extends Phaser.Physics.Matter.Sprite {
     return true;
   }
 
+  heal(amount, source = null) {
+    if (this.isDead) return;
+
+    this.hp = Math.min(this.maxHP, this.hp + amount);
+
+    this.scene.events.emit('player:hpChanged', this.hp, this.maxHP);
+  }
+
   receiveHit(attack) {
     if (this.isDead) return { outcome: 'hit', damageTaken: 0 };
 

@@ -239,6 +239,12 @@ export class ArcherEnemy extends Phaser.Physics.Matter.Sprite {
 
     this.play('archer_death');
 
+    const HEAL_DROP_CHANCE = 0.30;
+
+    if (Math.random() < HEAL_DROP_CHANCE) {
+      this.scene.spawnHeartPickup(this.x, this.y);
+    }
+
     this.once(Phaser.Animations.Events.ANIMATION_COMPLETE_KEY + 'archer_death', () => {
       this.destroy();
     });

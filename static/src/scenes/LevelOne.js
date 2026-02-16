@@ -10,6 +10,7 @@ import { DialogueUI } from "../ui/DialogueUI.js";
 import { KnightNpc } from "../entities/npc/knightNpc.js";
 import { CATS } from "../utils/physicsCategories.js";
 import { getDifficultyConfig } from "../config/difficulty.js";
+import HeartPickup from "../entities/pickups/HeartPickups.js";
 
 const AssetKeys = {
   BACKGROUND: 'bg_desert',
@@ -41,6 +42,11 @@ export class LevelOne extends Phaser.Scene {
 
     this.load.image('peasant_portrait', '/static/assets/NPCs/peasant/peasantPortrait.png');
     this.load.image('knight_portrait', '/static/assets/NPCs/knight/knightPortrait.png');
+
+    this.load.spritesheet("heart_pickup", "/static/assets/UI/healthPickup.png", {
+      frameWidth: 16,
+      frameHeight: 16,
+    });
 
     Mplayer.preload(this);
     ArcherEnemy.preload(this);
@@ -124,6 +130,16 @@ export class LevelOne extends Phaser.Scene {
     this.nextNpcCheckTime = 0;
     this.npcCheckIntervalMs = 100;
 
+    this.heartPickups = [];
+
+    if (!this.anims.exists("heart_idle")) {
+      this.anims.create({
+        key: "heart_idle",
+        frames: this.anims.generateFrameNumbers("heart_pickup", { start: 0, end: 7 }),
+        frameRate: 10,
+        repeat: -1,
+      });
+    }
 
     // Collision handling (sword/enemy + arrow/player)
     this.setupMatterCollisions();
@@ -150,9 +166,15 @@ export class LevelOne extends Phaser.Scene {
     }).setScrollFactor(0).setDepth(9999);
 
     this.spawnEnemies();
-
     this.playIntroCutscene();
   }
+
+  spawnHeartPickup(x, y) {
+    const heart = new HeartPickup(this, x, y, 10);
+    this.heartPickups.push(heart);
+    return heart;
+  }
+
 
   setupMatterCollisions() {
     this.matter.world.on('collisionstart', (event) => {
@@ -162,6 +184,29 @@ export class LevelOne extends Phaser.Scene {
 
         const bodyA = pair.bodyA;
         const bodyB = pair.bodyB;
+
+        // Heart pickup
+        const heartObj = objA?.isHeartPickup ? objA : (objB?.isHeartPickup ? objB : null);
+        if (heartObj) {
+          const otherObj = (heartObj === objA) ? objB : objA;
+
+          const hitPlayer = (otherObj === this.player) || (otherObj === this.player?.sprite);
+
+          if (hitPlayer) {
+            const healAmount = heartObj.heartPickupRef?.healAmount ?? 10;
+            const before = this.player.hp;
+
+            this.player.heal(10);
+
+            heartObj.heartPickupRef?.destroy();
+
+            // remove from list
+            this.heartPickups = (this.heartPickups || []).filter(h => h.sprite && h.sprite !== heartObj);
+
+            continue;
+          }
+        }
+
 
         // player hits death zone
         if (objA === this.player && bodyB?.label === 'deathZone') {
