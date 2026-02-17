@@ -169,12 +169,38 @@ export class LevelOne extends Phaser.Scene {
     this.playIntroCutscene();
   }
 
+  startStageTelemetry(stageNumber) {
+    this.stageNumber = stageNumber;
+    this.attemptId = (this.attemptId ?? 0) + 1;
+    this.runStartMs = this.time.now;
+    this.damageTakenThisAttempt = 0;
+
+    sendTelemetry("stage_start", {
+      stage_number: stageNumber,
+      attempt_id: this.attemptId,
+      difficulty: this.difficulty?.name ?? this.difficultyKey ?? null,
+    });
+  }
+
+  finishStageTelemetry(result, extra = {}) {
+    const durationMs = Math.max(0, Math.floor(this.time.now - (this.runStartMs ?? this.time.now)));
+
+    sendTelemetry(result === "complete" ? "stage_complete" : "fail", {
+      stage_number: this.stageNumber,
+      attempt_id: this.attemptId,
+      difficulty: this.difficulty?.name ?? this.difficultyKey ?? null,
+      result,
+      duration_ms: durationMs,
+      damage_taken: this.damageTakenThisAttempt,
+      ...extra,
+    });
+  }
+
   spawnHeartPickup(x, y) {
     const heart = new HeartPickup(this, x, y, 10);
     this.heartPickups.push(heart);
     return heart;
   }
-
 
   setupMatterCollisions() {
     this.matter.world.on('collisionstart', (event) => {

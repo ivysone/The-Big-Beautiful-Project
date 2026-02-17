@@ -9,23 +9,52 @@ export async function getMe() {
   return cachedMe;
 }
 
-export async function sendTelemetry(event_type, payload = {}) {
-  const config_id = getSelectedDifficultyId();
+function getSessionId() {
+  let id = localStorage.getItem("session_id");
+  if (!id) {
+    id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    localStorage.setItem("session_id", id);
+  }
+  return id;
+}
 
-  const me = await getMe();
-  if (!me.logged_in) return;
+// simple in-memory queue
+const queue = [];
+let flushTimer = null;
 
+export function sendTelemetry(event_type, payload = {}) {
+  // keep payload small + consistent
   const body = {
     event_type,
-    username: me.username,
-    timestamp: new Date().toISOString(),
-    config_id,
-    ...payload
+    event_data: {
+      ...payload,
+      session_id: getSessionId(),
+      ts: Date.now(),
+    },
   };
 
-  await fetch("/api/collect", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body)
-  });
+  queue.push(body);
+
+  // flush quickly but not on every event
+  if (!flushTimer) {
+    flushTimer = setTimeout(flush, 300);
+  }
+}
+
+async function flush() {
+  flushTimer = null;
+  if (!queue.length) return;
+
+  const batch = queue.splice(0, queue.length);
+
+  try {
+    await fetch("/api/collect", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(batch.length === 1 ? batch[0] : { batch }),
+    });
+  } catch (e) {
+    // if offline, re-queue (lightweight)
+    queue.unshift(...batch);
+  }
 }
