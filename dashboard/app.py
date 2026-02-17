@@ -3,7 +3,7 @@ import plotly.express as px
 from dash import Dash, html, dcc, Input, Output, State
 import dash
 from .db import query_df
-from .metrics import normalize_events, funnel_by_stage, time_by_stage, spike_detection
+from .metrics import normalize_events, funnel_by_stage, time_by_stage, spike_detection, combat_by_stage, hits_by_enemy, fail_reasons
 import json
 from datetime import datetime
 
@@ -17,7 +17,11 @@ from .balancing_toolkit import (
 
 
 # Dashboard UI
-app = Dash(__name__, requests_pathname_prefix="/admin/")
+app = Dash(
+    __name__,
+    requests_pathname_prefix="/admin/",
+)
+
 app.title = "Telemetry Dashboard (Admin)"
 
 def load_data():
@@ -57,8 +61,12 @@ app.layout = html.Div([
         dcc.Tab(label="Heatmap", children=[
             dcc.Graph(id="death-heatmap"),
         ]),
-        dcc.Tab(label="(Sprint 2-1)", children=[
-            dcc.Graph(id="balance-table"),
+        dcc.Tab(label="Combat & Healing", children=[
+            dcc.Graph(id="combat-summary"),
+            html.Div([
+                dcc.Graph(id="hits-by-enemy"),
+                dcc.Graph(id="death-causes"),
+            ], style={"display":"grid","gridTemplateColumns":"1fr 1fr","gap":"12px"}),
         ]),
         dcc.Tab(label="Balancing Toolkit", children=[
             html.H3("Combat Tuning Toolkit (Prototype)"),
@@ -165,13 +173,23 @@ app.layout = html.Div([
 )
 def init_dropdowns(_):
     events, deaths, _balance = load_data()
-    df = normalize_events(events)
 
-    diff_opts = difficulty_options(df)
+    # difficulty options
+    if events is None or events.empty:
+        diff_opts = [{"label": d, "value": d} for d in ["easy","medium","hard"]]
+    else:
+        df = normalize_events(events)
+        diff_opts = difficulty_options(df)
 
-    stages = sorted([int(s) for s in deaths["stage_number"].dropna().unique().tolist()]) if len(deaths) else list(range(1, 11))
+    # stage options
+    if deaths is None or deaths.empty or "stage_number" not in deaths.columns:
+        stages = list(range(1, 11))
+    else:
+        stages = sorted(pd.to_numeric(deaths["stage_number"], errors="coerce").dropna().astype(int).unique().tolist())
+
     stage_opts = [{"label": f"Stage {s}", "value": s} for s in stages]
     return diff_opts, stage_opts
+
 
 
 @app.callback(
@@ -181,7 +199,9 @@ def init_dropdowns(_):
     Output("time-curve", "figure"),
     Output("spike-table", "figure"),
     Output("death-heatmap", "figure"),
-    Output("balance-table", "figure"),
+    Output("combat-summary", "figure"),
+    Output("hits-by-enemy", "figure"),
+    Output("death-causes", "figure"),
     Input("difficulty-dd", "value"),
     Input("stage-dd", "value"),
 )
@@ -251,15 +271,39 @@ def update_dashboard(difficulty, stage_value):
     else:
         fig_balance = px.scatter(title="Game Balance Settings - no data")
 
-    return kpi, fig_funnel, fig_rates, fig_time, fig_spike, fig_heat, fig_balance
+    # Combat report
+
+    combat = combat_by_stage(df, difficulty=difficulty)
+    fig_combat = px.bar(
+        combat,
+        x="stage_id",
+        y=["enemy_kills","player_hits","heal_pickups","deaths","retries"],
+        barmode="group",
+        title="Combat & Healing volume by stage"
+    )
+
+    hb = hits_by_enemy(df, difficulty=difficulty, stage_id=stage_value)
+    fig_hits_enemy = px.pie(
+        hb, names="enemy_type", values="hits",
+        title="Who is hitting the player? (hits by enemy type)"
+    ) if len(hb) else px.scatter(title="No player_hit events yet.")
+
+    fr = fail_reasons(df, difficulty=difficulty, stage_id=stage_value)
+    fig_fail_causes = px.bar(
+        fr, x="cause", y="count",
+        title="Death causes"
+    ) if len(fr) else px.scatter(title="No death events yet.")
+
+
+    return kpi, fig_funnel, fig_rates, fig_time, fig_spike, fig_heat, fig_combat, fig_hits_enemy, fig_fail_causes
 
 @app.callback(
     Output("sim-mode-badge", "children"),
     Output("kpi-deltas", "children"),
     Output("rules-box", "children"),
-    Output("sim-reach-curve", "figure"),      # we repurpose this as a distribution plot
-    Output("sim-fail-by-stage", "figure"),    # bar compare
-    Output("sim-time-by-stage", "figure"),    # bar compare
+    Output("sim-reach-curve", "figure"),  
+    Output("sim-fail-by-stage", "figure"),    
+    Output("sim-time-by-stage", "figure"),   
     Input("run-sim-btn", "n_clicks"),
     Input("p-enemyHpMult", "value"),
     Input("p-enemyDamageMult", "value"),
@@ -400,9 +444,8 @@ def toolkit_update(n_clicks, enemyHpMult, enemyDamageMult, playerDamageMult, dif
     State("p-playerDamageMult", "value"),
     prevent_initial_call=True
 )
-def save_decision_cb(n, designer, stage_id, difficulty, rationale,
-                     enemyHpMult, enemyDamageMult, playerDamageMult, playerIncomingDamageMult,
-                     staminaRegenMult, parryWindowMs, parryStunMs, checkpointSpacing, rewardCoinsMult):
+def save_decision_cb(n_clicks, designer, stage_id, difficulty, rationale,
+                     enemyHpMult, enemyDamageMult, playerDamageMult):
     # compute evidence snapshot from current telemetry filters
     events, deaths, balance = load_data()
     df = normalize_events(events)

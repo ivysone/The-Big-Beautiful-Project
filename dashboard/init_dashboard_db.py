@@ -1,7 +1,7 @@
 import sqlite3
 import os
 
-DB_PATH = "./real_game.db"
+DB_PATH = "/data/game.db"
 
 def init_database():
     """Create the database structure if it doesn't exist"""

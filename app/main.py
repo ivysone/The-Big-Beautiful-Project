@@ -390,6 +390,15 @@ def api_me(request: Request):
 def health():
     return {"ok": True}
 
+@app.get("/api/debug/db")
+def debug_db():
+    return {
+        "DB_PATH": DASHBOARD_DB_PATH,
+        "exists": os.path.exists(DASHBOARD_DB_PATH),
+        "size": os.path.getsize(DASHBOARD_DB_PATH) if os.path.exists(DASHBOARD_DB_PATH) else 0,
+    }
+
+
 
 @app.post("/api/collect")
 def collect_event(ev: UserEvent):
@@ -474,5 +483,5 @@ def debug_csv():
 
 
 # ===== DASHBOARD INTEGRATION =====
-os.environ["GAME_DB_PATH"] = DASHBOARD_DB_PATH
+os.environ["DB_PATH"] = DASHBOARD_DB_PATH
 app.mount("/admin", WSGIMiddleware(dash_entry.app.server))

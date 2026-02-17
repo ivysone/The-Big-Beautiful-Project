@@ -3,7 +3,7 @@ import sqlite3
 import pandas as pd
 
 def get_db_path() -> str:
-    return os.environ.get("DB_PATH", "data/game.db")
+    return os.environ.get("DB_PATH", "/data/game.db")
 
 
 def query_df(sql: str, params: tuple = ()) -> pd.DataFrame:
