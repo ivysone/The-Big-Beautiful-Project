@@ -105,8 +105,8 @@ export class Mplayer extends Phaser.Physics.Matter.Sprite {
       a: Phaser.Input.Keyboard.KeyCodes.A,
       d: Phaser.Input.Keyboard.KeyCodes.D,
       s: Phaser.Input.Keyboard.KeyCodes.S,
-      r: Phaser.Input.Keyboard.KeyCodes.R,
-      q: Phaser.Input.Keyboard.KeyCodes.Q,
+      l: Phaser.Input.Keyboard.KeyCodes.L,
+      p: Phaser.Input.Keyboard.KeyCodes.P,
       space: Phaser.Input.Keyboard.KeyCodes.SPACE,
     });
 
@@ -503,7 +503,7 @@ export class Mplayer extends Phaser.Physics.Matter.Sprite {
     const movingHorizontally = Math.abs(this.body.velocity.x) > 0.05;
 
     // Blocking input
-    if (this.keys.q.isDown && !this.isAttacking) {
+    if (this.keys.p.isDown && !this.isAttacking) {
       if (!this.isBlocking) this.startBlock();
       this.setVelocityX(0);
       if (this.anims.currentAnim?.key !== 'block') this.play('block', true);
@@ -514,7 +514,7 @@ export class Mplayer extends Phaser.Physics.Matter.Sprite {
 
     // Attacking
     if (this.isAttacking) {
-      if ((this.attackStage === 1) && Phaser.Input.Keyboard.JustDown(this.keys.r)) {
+      if ((this.attackStage === 1) && Phaser.Input.Keyboard.JustDown(this.keys.l)) {
         this.comboQueued = true;
       }
       this.setVelocityX(0);
@@ -522,7 +522,7 @@ export class Mplayer extends Phaser.Physics.Matter.Sprite {
     }
 
     // Start attack
-    if (Phaser.Input.Keyboard.JustDown(this.keys.r) && onGround) {
+    if (Phaser.Input.Keyboard.JustDown(this.keys.l) && onGround) {
       this.startAttack1();
       return;
     }
