@@ -12,6 +12,7 @@ const config = {
     backgroundColor: '#000000',
     pixelArt: true,
     scene: [
+        LevelOne,
         LevelTwo,
     ],
     scale: {
