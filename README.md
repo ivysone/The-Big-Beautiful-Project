@@ -4,6 +4,8 @@ A 2D action-platformer prototype built with **Phaser**, paired with a **telemetr
 
 This project explores how **live gameplay data** can be captured, visualized, and used to iterate on difficulty, pacing, and player experience.
 
+Hosted on: https://the-big-beautiful-project.fly.dev/intro
+
 ## Local Deployment Guide
 
 This guide walks you through running **The Big Beautiful Project** locally:  
