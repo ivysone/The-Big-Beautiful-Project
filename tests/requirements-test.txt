@@ -1,20 +1,15 @@
-# Core testing tools
 pytest==7.4.3
 pytest-cov==4.1.0
 pytest-mock==3.12.0
 
-# FastAPI testing
 httpx==0.25.2
 fastapi==0.104.1
 uvicorn==0.24.0
 
-# Data and analytics (match your dashboard requirements)
 pandas==2.1.4
 plotly==5.18.0
 numpy==1.26.2
 
-# Database
 pydantic==2.5.2
 
-# Additional utilities
 python-dateutil==2.8.2
