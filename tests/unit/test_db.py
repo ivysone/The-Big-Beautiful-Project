@@ -18,7 +18,7 @@ class TestGetDbPath:
     def test_get_db_path_default(self):
         with patch.dict(os.environ, {}, clear=True):
             result = get_db_path()
-            assert result == "/data/game.db"
+            assert result == "/dashboard/game.db"
 
     def test_get_db_path_from_environment(self):
         custom_path = "/custom/path/to/game.db"
