@@ -292,6 +292,35 @@ export class LevelTwo extends Phaser.Scene {
     return heart;
   }
 
+  handleDamageTile(body) {
+    if (!this.player || this.player.isDead) return;
+
+    // optional: prevent damage every single frame
+    const now = this.time.now;
+    if (this._lastTileDamage && now - this._lastTileDamage < 400) return;
+    this._lastTileDamage = now;
+
+    const dmg = Math.round(
+      (body.damageAmount ?? 5) *
+      (this.difficulty?.playerIncomingDamageMult ?? 1)
+    );
+
+    const result = this.player.receiveHit({
+      damage: dmg,
+      source: { x: body.position.x, y: body.position.y },
+      canBeParried: false,
+    });
+
+    this.logPlayerHit?.({
+      damage: dmg,
+      source: { x: body.position.x, y: body.position.y },
+      enemyType: body.damageType ?? "tile",
+    });
+
+    this.maybeLogDeath?.("tile_damage");
+  }
+
+
   // COLLISIONS
   setupMatterCollisions() {
     this.matter.world.on("collisionstart", (event) => {
@@ -329,6 +358,14 @@ export class LevelTwo extends Phaser.Scene {
 
             continue;
           }
+        }
+
+        // damage tile hits player
+        if (objA === this.player && bodyB?.label === "damageTile") {
+          this.handleDamageTile(bodyB);
+        }
+        else if (objB === this.player && bodyA?.label === "damageTile") {
+          this.handleDamageTile(bodyA);
         }
 
         // player hits death zone
@@ -510,6 +547,32 @@ export class LevelTwo extends Phaser.Scene {
     this.groundLayer = this.map.createLayer("floor", tileset, 0, 0);
     this.treesDecor = this.map.createLayer("treeDecor", tileset, 0, 0);
     this.dmgSources = this.map.createLayer("damage", tileset, 0, 0);
+
+    // DAMAGE TILE HITBOXES 
+    this.dmgSources.forEachTile((t) => {
+      if (!t || t.index < 0) return;
+
+      const damage = t.properties?.damage;
+      if (typeof damage !== "number") return;
+
+      const body = this.matter.add.rectangle(
+        t.getCenterX(),
+        t.getCenterY(),
+        t.width,
+        t.height,
+        {
+          isStatic: true,
+          isSensor: true,
+          label: "damageTile"
+        }
+      );
+
+      body.damageAmount = damage;
+      body.damageType = t.properties?.damageType ?? "tile";
+
+      body.collisionFilter.category = CATS.WORLD;
+    });
+
 
     this.groundLayer.setCollisionByProperty({ collides: true });
     this.groundLayer.setCollisionByProperty({ collision: true });
