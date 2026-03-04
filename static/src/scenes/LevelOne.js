@@ -11,6 +11,7 @@ import { KnightNpc } from "../entities/npc/knightNpc.js";
 import { CATS } from "../utils/physicsCategories.js";
 import { getDifficultyConfig } from "../config/difficulty.js";
 import HeartPickup from "../entities/pickups/HeartPickups.js";
+import { OrcEnemy } from "../entities/enemies/OrcEnemy.js";
 
 const AssetKeys = {
   BACKGROUND: "bg_desert",
@@ -65,6 +66,7 @@ export class LevelOne extends Phaser.Scene {
     GoblinEnemy.preload(this);
     PeasantNpc.preload(this);
     KnightNpc.preload(this);
+    OrcEnemy.preload(this);
   }
 
   // TELEMETRY HELPERS
@@ -212,8 +214,12 @@ export class LevelOne extends Phaser.Scene {
     this.npcs = [];
     this.npcs.push(new PeasantNpc(this, 350, 972));
     this.npcs.push(new KnightNpc(this, 9470, 1036));
-
     this.player = new Mplayer(this, 0, 972).setDepth(1000);
+
+    this.orc = new OrcEnemy(this, 450, 972, {
+        target: this.player,
+        groundLayer: this.groundLayer,
+      });
 
     this.interactKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
 
