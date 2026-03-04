@@ -11,6 +11,8 @@ import { KnightNpc } from "../entities/npc/knightNpc.js";
 import { CATS } from "../utils/physicsCategories.js";
 import { getDifficultyConfig } from "../config/difficulty.js";
 import HeartPickup from "../entities/pickups/HeartPickups.js";
+import { BatEnemy } from "../entities/enemies/BatEnemy.js";
+import { EyeEnemy } from "../entities/enemies/EyeEnemy.js";
 import { OrcEnemy } from "../entities/enemies/OrcEnemy.js";
 
 const AssetKeys = {
@@ -66,7 +68,6 @@ export class LevelOne extends Phaser.Scene {
     GoblinEnemy.preload(this);
     PeasantNpc.preload(this);
     KnightNpc.preload(this);
-    OrcEnemy.preload(this);
   }
 
   // TELEMETRY HELPERS
@@ -216,11 +217,6 @@ export class LevelOne extends Phaser.Scene {
     this.npcs.push(new KnightNpc(this, 9470, 1036));
     this.player = new Mplayer(this, 0, 972).setDepth(1000);
 
-    this.orc = new OrcEnemy(this, 450, 972, {
-        target: this.player,
-        groundLayer: this.groundLayer,
-      });
-
     this.interactKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
 
     this.talkPrompt = this.add
@@ -302,144 +298,156 @@ export class LevelOne extends Phaser.Scene {
 
   // COLLISIONS
   setupMatterCollisions() {
+    const isPlayerObj = (obj) => obj === this.player || obj === this.player?.sprite;
+
+    const handleHeartPickup = (objA, objB) => {
+      const heartObj = objA?.isHeartPickup ? objA : objB?.isHeartPickup ? objB : null;
+      if (!heartObj) return false;
+
+      const otherObj = heartObj === objA ? objB : objA;
+      if (!isPlayerObj(otherObj)) return false;
+
+      const healAmount = heartObj.heartPickupRef?.healAmount ?? 10;
+      const before = this.player.hp;
+
+      this.player.heal(healAmount);
+
+      this.logHealPickup({
+        amount: healAmount,
+        hp_before: before,
+        hp_after: this.player.hp,
+        x: heartObj.x,
+        y: heartObj.y,
+      });
+
+      heartObj.heartPickupRef?.destroy();
+      this.heartPickups = (this.heartPickups || []).filter((h) => h.sprite && h.sprite !== heartObj);
+
+      return true;
+    };
+
+    const handleDeathZone = (objA, bodyA, objB, bodyB) => {
+      if (objA === this.player && bodyB?.label === "deathZone") {
+        this.killPlayer("fell");
+        return true;
+      }
+      if (objB === this.player && bodyA?.label === "deathZone") {
+        this.killPlayer("fell");
+        return true;
+      }
+      return false;
+    };
+
+    const handleSwordHitEnemy = (bodyA, objA, bodyB, objB) => {
+      if (bodyA === this.player.swordSensor && objB?.isEnemy) {
+        this.handleSwordHit(objB);
+        return true;
+      }
+      if (bodyB === this.player.swordSensor && objA?.isEnemy) {
+        this.handleSwordHit(objA);
+        return true;
+      }
+      return false;
+    };
+
+    const handleEnemyMeleeHitsPlayer = (objA, bodyA, objB, bodyB) => {
+      // normalize: (playerObj, meleeBody)
+      let playerObj = null;
+      let meleeBody = null;
+
+      if (objA === this.player && bodyB?.isEnemyMeleeHitbox) {
+        playerObj = objA;
+        meleeBody = bodyB;
+      } else if (objB === this.player && bodyA?.isEnemyMeleeHitbox) {
+        playerObj = objB;
+        meleeBody = bodyA;
+      } else {
+        return false;
+      }
+
+      const owner = meleeBody.owner;
+      if (!owner || owner.isDead) return true; // consumed, but nothing to do
+
+      // Only deal damage when the enemy has explicitly activated melee.
+      // (Bat sets this via setMeleeActive(true/false))
+      if (owner.meleeActive === false) return true;
+
+      // Optional: one-hit-per-attack support (bat can set hitThisAttack = new Set())
+      const hitKey = this.player.body ?? this.player;
+      if (owner.hitThisAttack) {
+        if (owner.hitThisAttack.has(hitKey)) return true;
+        owner.hitThisAttack.add(hitKey);
+      }
+
+      // Damage (keep your existing scaling)
+      const dmg = Math.round(8 * (this.difficulty.playerIncomingDamageMult ?? 1));
+
+      const result = this.player.receiveHit({
+        damage: dmg,
+        source: { x: owner?.x ?? this.player.x, y: owner?.y ?? this.player.y },
+        canBeParried: true,
+      });
+
+      if (result?.parried) {
+        owner?.stun?.(2000, this.time.now);
+        this.parriesThisAttempt = (this.parriesThisAttempt ?? 0) + 1;
+
+        sendTelemetry("parry_success", {
+          ...this.telemetryBase(1),
+          extra: { enemy: owner?.constructor?.name ?? "unknown" },
+        });
+      } else {
+        this.logPlayerHit({
+          damage: dmg,
+          source: { x: owner?.x ?? this.player.x, y: owner?.y ?? this.player.y },
+          enemyType: owner?.constructor?.name ?? "Enemy",
+        });
+        this.maybeLogDeath(owner?.constructor?.name ?? "Enemy");
+      }
+
+      return true;
+    };
+
+    const handleEnemyProjectileHitsPlayer = (objA, objB) => {
+      // (playerObj, projectileObj)
+      let projectile = null;
+
+      if (objA === this.player && objB?.isEnemyProjectile) projectile = objB;
+      else if (objB === this.player && objA?.isEnemyProjectile) projectile = objA;
+      else return false;
+
+      const srcX = projectile.x;
+      const srcY = projectile.y;
+
+      projectile.destroy();
+
+      const dmg = Math.round(5 * (this.difficulty.playerIncomingDamageMult ?? 1));
+      this.player.receiveHit({ damage: dmg, source: { x: srcX, y: srcY }, canBeParried: true });
+
+      this.logPlayerHit({
+        damage: dmg,
+        source: { x: srcX, y: srcY },
+        enemyType: "Archer",
+      });
+
+      this.maybeLogDeath("projectile");
+      return true;
+    };
+
     this.matter.world.on("collisionstart", (event) => {
       for (const pair of event.pairs) {
-        const objA = pair.bodyA?.gameObject;
-        const objB = pair.bodyB?.gameObject;
-
         const bodyA = pair.bodyA;
         const bodyB = pair.bodyB;
 
-        // Heart pickup
-        const heartObj = objA?.isHeartPickup ? objA : objB?.isHeartPickup ? objB : null;
-        if (heartObj) {
-          const otherObj = heartObj === objA ? objB : objA;
-          const hitPlayer = otherObj === this.player || otherObj === this.player?.sprite;
+        const objA = bodyA?.gameObject;
+        const objB = bodyB?.gameObject;
 
-          if (hitPlayer) {
-            const healAmount = heartObj.heartPickupRef?.healAmount ?? 10;
-            const before = this.player.hp;
-
-            this.player.heal(healAmount);
-
-            this.logHealPickup({
-              amount: healAmount,
-              hp_before: before,
-              hp_after: this.player.hp,
-              x: heartObj.x,
-              y: heartObj.y,
-            });
-
-            heartObj.heartPickupRef?.destroy();
-            this.heartPickups = (this.heartPickups || []).filter(
-              (h) => h.sprite && h.sprite !== heartObj
-            );
-
-            continue;
-          }
-        }
-
-        // player hits death zone
-        if (objA === this.player && bodyB?.label === "deathZone") {
-          this.killPlayer("fell");
-        } else if (objB === this.player && bodyA?.label === "deathZone") {
-          this.killPlayer("fell");
-        }
-
-        // Sword sensor hits enemy
-        if (bodyA === this.player.swordSensor && objB?.isEnemy) {
-          this.handleSwordHit(objB);
-        } else if (bodyB === this.player.swordSensor && objA?.isEnemy) {
-          this.handleSwordHit(objA);
-        }
-
-        // goblin melee sensor hits player
-        if (objA === this.player && bodyB?.isEnemyMeleeHitbox) {
-          const owner = bodyB.owner;
-          const dmg = Math.round(8 * (this.difficulty.playerIncomingDamageMult ?? 1));
-          const result = this.player.receiveHit({
-            damage: dmg,
-            source: { x: owner?.x ?? this.player.x, y: owner?.y ?? this.player.y },
-            canBeParried: true,
-          });
-
-          if (result?.parried) {
-            owner?.stun?.(2000, this.time.now);
-            this.parriesThisAttempt = (this.parriesThisAttempt ?? 0) + 1;
-
-            sendTelemetry("parry_success", {
-              ...this.telemetryBase(1),
-              extra: { enemy: owner?.constructor?.name ?? "unknown" },
-            });
-          } else {
-            this.logPlayerHit({
-              damage: dmg,
-              source: { x: owner?.x ?? this.player.x, y: owner?.y ?? this.player.y },
-              enemyType: "Goblin",
-            });
-            this.maybeLogDeath("Goblin");
-          }
-        } else if (objB === this.player && bodyA?.isEnemyMeleeHitbox) {
-          const owner = bodyA.owner;
-          const dmg = Math.round(8 * (this.difficulty.playerIncomingDamageMult ?? 1));
-          const result = this.player.receiveHit({
-            damage: dmg,
-            source: { x: owner?.x ?? this.player.x, y: owner?.y ?? this.player.y },
-            canBeParried: true,
-          });
-
-          if (result?.parried) {
-            owner?.stun?.(2000, this.time.now);
-            this.parriesThisAttempt = (this.parriesThisAttempt ?? 0) + 1;
-
-            sendTelemetry("parry_success", {
-              ...this.telemetryBase(1),
-              extra: { enemy: owner?.constructor?.name ?? "unknown" },
-            });
-          } else {
-            this.logPlayerHit({
-              damage: dmg,
-              source: { x: owner?.x ?? this.player.x, y: owner?.y ?? this.player.y },
-              enemyType: "Goblin",
-            });
-            this.maybeLogDeath("Goblin");
-          }
-        }
-
-        // arrow hits player
-        if (objA === this.player && objB?.isEnemyProjectile) {
-          const srcX = objB.x;
-          const srcY = objB.y;
-
-          objB.destroy();
-
-          const dmg = Math.round(5 * (this.difficulty.playerIncomingDamageMult ?? 1));
-          this.player.receiveHit({ damage: dmg, source: { x: srcX, y: srcY }, canBeParried: true });
-
-          this.logPlayerHit({
-            damage: dmg,
-            source: { x: srcX, y: srcY },
-            enemyType: "Archer",
-          });
-
-          this.maybeLogDeath("projectile");
-        } else if (objB === this.player && objA?.isEnemyProjectile) {
-          const srcX = objA.x;
-          const srcY = objA.y;
-
-          objA.destroy();
-
-          const dmg = Math.round(5 * (this.difficulty.playerIncomingDamageMult ?? 1));
-          this.player.receiveHit({ damage: dmg, source: { x: srcX, y: srcY }, canBeParried: true });
-
-          this.logPlayerHit({
-            damage: dmg,
-            source: { x: srcX, y: srcY },
-            enemyType: "Archer",
-          });
-
-          this.maybeLogDeath("projectile");
-        }
+        // Order matters only if you want early exits.
+        if (handleHeartPickup(objA, objB)) continue;
+        if (handleDeathZone(objA, bodyA, objB, bodyB)) continue;
+        if (handleSwordHitEnemy(bodyA, objA, bodyB, objB)) continue;
+        if (handleEnemyMeleeHitsPlayer(objA, bodyA, objB, bodyB)) continue;
+        if (handleEnemyProjectileHitsPlayer(objA, objB)) continue;
       }
     });
   }
