@@ -1,6 +1,7 @@
 import { Start } from './scenes/Start.js';
 import { LevelOne } from './scenes/LevelOne.js';
 import { LevelTwo } from './scenes/LevelTwo.js';
+import { TestLevel } from './scenes/TestLevel.js';
 
 const config = {
     type: Phaser.AUTO,
@@ -12,8 +13,8 @@ const config = {
     backgroundColor: '#000000',
     pixelArt: true,
     scene: [
-        LevelOne,
         LevelTwo,
+        LevelOne,
     ],
     scale: {
         mode: Phaser.Scale.ENVELOP,
@@ -23,7 +24,7 @@ const config = {
     default: 'matter',
     matter: {
         gravity: {y: 1},
-        debug: true
+        debug: false
         }
     }
 }
