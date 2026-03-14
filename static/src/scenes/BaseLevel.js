@@ -383,39 +383,44 @@ export class BaseLevel extends Phaser.Scene {
     const { map, layers } = this.levelConfig;
 
     this.map = this.make.tilemap({ key: map.key });
-
     const tilesets = this.buildTilesets();
 
-    this.groundLayer = this.map.createLayer(layers.ground, tilesets, 0, 0);
+    this.backgroundLayers = [];
+    this.decorLayers = [];
+    this.extraCollisionLayers = [];
+    this.damageLayer = null;
+    this.groundLayer = null;
 
-    if (!this.groundLayer) {
-      throw new Error(`Ground layer "${layers.ground}" could not be created.`);
+    for (const layerDef of layers.ordered || []) {
+      const layer = this.map.createLayer(layerDef.name, tilesets, 0, 0);
+      if (!layer) continue;
+
+      switch (layerDef.role) {
+        case "ground":
+          this.groundLayer = layer;
+          break;
+        case "damage":
+          this.damageLayer = layer;
+          break;
+        case "background":
+          this.backgroundLayers.push(layer);
+          break;
+        case "collision":
+          this.extraCollisionLayers.push(layer);
+          break;
+        default:
+          this.decorLayers.push(layer);
+          break;
+      }
     }
 
-    this.decorLayers = (layers.decor || [])
-      .map((layerName) => this.map.createLayer(layerName, tilesets, 0, 0))
-      .filter(Boolean);
-
-    this.damageLayer = layers.damage
-      ? this.map.createLayer(layers.damage, tilesets, 0, 0)
-      : null;
-
-    this.extraCollisionLayers = (layers.collision || [])
-      .map((layerName) => this.map.createLayer(layerName, tilesets, 0, 0))
-      .filter(Boolean);
+    if (!this.groundLayer) {
+      throw new Error("No ground layer was created.");
+    }
 
     this.buildGroundCollision(this.groundLayer);
     this.buildExtraCollisionLayers(this.extraCollisionLayers);
     this.buildDamageTiles(this.damageLayer);
-
-    this.afterCreateWorld?.({
-      map: this.map,
-      tilesets,
-      groundLayer: this.groundLayer,
-      decorLayers: this.decorLayers,
-      damageLayer: this.damageLayer,
-      collisionLayers: this.extraCollisionLayers,
-    });
 
     return this.groundLayer;
   }
@@ -605,6 +610,8 @@ export class BaseLevel extends Phaser.Scene {
       ...(this.damageLayer ? [this.damageLayer] : []),
       this.player,
       this.extraEnemies,
+      this.npcs,
+      this.enemies,
     ].filter(Boolean);
 
     this.uiCam.ignore(ignored);
