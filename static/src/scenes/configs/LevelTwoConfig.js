@@ -2,7 +2,7 @@
 export const levelTwoConfig = {
   sceneKey: "LevelTwo",
   stageNumber: 2,
-  nextScene: null,
+  nextScene: "LevelThree",
 
   map: {
     key: "forest",
@@ -47,17 +47,16 @@ export const levelTwoConfig = {
   },
 
   layers: {
-    ground: "Floor",
-    damage: "DMG",
-    decor: [
-      "Background",
-      "Decor",
-      "Trees",
-      "More Trees",
-      "Bushes",
-      "More Bushes",
-    ],
-    collision: [],
+    ordered: [
+        { name: "Background", role: "background" },
+        { name: "Floor", role: "ground" },
+        { name: "DMG", role: "damage" },
+        { name: "Decor", role: "decor" },
+        { name: "Trees", role: "decor" },
+        { name: "More Trees", role: "decor" },
+        { name: "Bushes", role: "decor" },
+        { name: "More Bushes", role: "decor" },
+    ]
   },
 
   parallax: {
@@ -101,7 +100,7 @@ export const levelTwoConfig = {
   },
 
   spawns: {
-    player: { x: 0, y: 204 },
+    player: { x: 0, y: 748 },
     npcs: [
       { type: "PeasantNpc", x: 220, y: 204 },
       { type: "KnightNpc", x: 9470, y: 1228 },
@@ -110,11 +109,11 @@ export const levelTwoConfig = {
 
   enemyObjectLayers: {
     Goblins: "GoblinEnemy",
-    Archers: "ArcherEnemy",
+    Slimes: "SlimeEnemy",
   },
 
   introCutscene: {
-    targetX: 300,
+    targetX: 273,
     duration: 2000,
   },
 
