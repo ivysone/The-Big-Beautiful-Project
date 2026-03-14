@@ -16,9 +16,14 @@ export const levelOneConfig = {
   },
 
   layers: {
-    ground: "Floor",
-    decor: ["Background", "Sand", "Bushes", "Trees"],
-    damage: "DMG",
+    ordered: [
+        { name: "Background", role: "background" },
+        { name: "Floor", role: "ground" },
+        { name: "DMG", role: "damage" },
+        { name: "Sand", role: "decor" },
+        { name: "Bushes", role: "decor" },
+        { name: "Trees", role: "decor" },
+    ],
   },
 
   parallax: {
