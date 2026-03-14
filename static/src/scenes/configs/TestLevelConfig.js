@@ -16,7 +16,7 @@ export const testLevelConfig = {
   },
 
   layers: {
-    ground: "Tile Layer 1"
+    ordered: [{name: "Tile Layer 1", role: "ground"}]
   },
 
   parallax: {
