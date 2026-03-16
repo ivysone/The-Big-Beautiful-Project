@@ -55,7 +55,13 @@ export const testLevelConfig = {
   spawns: {
     player: { x: 0, y: 900 },
     extraEnemies: [
-      { type: "SkullBoss", x: 600, y: 820 }
+      { type: "SkullBoss", x: 600, y: 820 },
+      { type: "RatEnemy", x: 350, y: 880 },
+      { type: "RatEnemy", x: 500, y: 880 },
+      { type: "RatEnemy", x: 900, y: 880 },
+      { type: "PlantEnemy", x: 1281, y: 940 },
+      { type: "PlantEnemy", x: 1507, y: 940 },
+
     ],
   },
 

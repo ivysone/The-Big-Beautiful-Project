@@ -17,6 +17,9 @@ import { OrcEnemy } from "../entities/enemies/OrcEnemy.js";
 import { DamnedEnemy } from "../entities/enemies/DamnedEnemy.js";
 import { SlimeEnemy } from "../entities/enemies/SlimeEnemy.js";
 import { SkullBoss } from "../entities/enemies/FinalBoss.js";
+import { RatEnemy } from "../entities/enemies/RatEnemy.js";
+import { PlantEnemy } from "../entities/enemies/PlantEnemy.js";
+
 
 const DEFAULT_HUD_KEYS = {
   FRAME: "hudFrame",
@@ -32,7 +35,9 @@ const ENEMY_REGISTRY = {
   OrcEnemy,
   DamnedEnemy,
   SlimeEnemy,
-  SkullBoss
+  SkullBoss,
+  RatEnemy,
+  PlantEnemy,
 };
 
 const NPC_REGISTRY = {
