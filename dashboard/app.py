@@ -167,7 +167,7 @@ app.layout = html.Div([
 
         ])
     ], style={"padding": "16px"})
-
+])
 # Initial Dropdown menu
 @app.callback(
     Output("difficulty-dd", "options"),
