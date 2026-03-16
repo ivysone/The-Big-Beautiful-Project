@@ -61,6 +61,7 @@ export const testLevelConfig = {
       { type: "RatEnemy", x: 900, y: 880 },
       { type: "PlantEnemy", x: 1281, y: 940 },
       { type: "PlantEnemy", x: 1507, y: 940 },
+      { type: "BurningSkull", x: 900, y: 800 },
 
     ],
   },

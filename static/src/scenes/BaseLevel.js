@@ -19,6 +19,7 @@ import { SlimeEnemy } from "../entities/enemies/SlimeEnemy.js";
 import { SkullBoss } from "../entities/enemies/FinalBoss.js";
 import { RatEnemy } from "../entities/enemies/RatEnemy.js";
 import { PlantEnemy } from "../entities/enemies/PlantEnemy.js";
+import { BurningSkull } from "../entities/enemies/BurningSkull.js";
 
 
 const DEFAULT_HUD_KEYS = {
@@ -38,6 +39,7 @@ const ENEMY_REGISTRY = {
   SkullBoss,
   RatEnemy,
   PlantEnemy,
+  BurningSkull,
 };
 
 const NPC_REGISTRY = {
