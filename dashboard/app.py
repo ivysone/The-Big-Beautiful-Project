@@ -26,249 +26,292 @@ app.title = "Telemetry Dashboard (Admin)"
 
 def load_data():
     events = query_df("SELECT * FROM telemetry_events")
-    return events
+    deaths = query_df("SELECT * FROM death_heatmap")
+    balance = query_df("SELECT * FROM game_balance")
+    return events, deaths, balance
 
-def difficulty_options(df):
-    if "difficulty" not in df.columns:
-        return [{"label": d, "value": d} for d in ["easy", "balanced", "hard"]]
+def difficulty_options(df_norm):
+    opts = sorted([x for x in df_norm["difficulty"].dropna().unique().tolist()])
+    return [{"label": d, "value": d} for d in (opts if opts else ["easy","medium","hard"])]
 
-    opts = sorted(df["difficulty"].dropna().unique().tolist())
-    return [{"label": d, "value": d} for d in opts]
-    
-# LAYOUT
 app.layout = html.Div([
     html.H2("📊 Telemetry Analytics Dashboard"),
+
+    
     html.Div([
+        # Difficulty Dropdown
         html.Div([
             html.Label("Difficulty"),
             dcc.Dropdown(id="difficulty-dd", placeholder="All", clearable=True),
         ], style={"width": "250px", "display": "inline-block", "marginRight": "16px"}),
+        # Stage Dropdown
+        html.Div([
+            html.Label("Stage (Heatmap)"),
+            dcc.Dropdown(id="stage-dd", placeholder="Select stage", clearable=False),
+        ], style={"width": "250px", "display": "inline-block"}),
+    ], style={"marginBottom": "16px"}),
 
-        dcc.Tabs([
-            # Funnel view
-            dcc.Tab(label="Funnel View", children=[
-                dcc.Graph(id="funnel-view"),
-            ]),
 
-            # Difficulty Spikes
-            dcc.Tab(label="Difficulty Spikes", children=[
-                dcc.Graph(id="difficulty-spikes"),
-            ]),
+    
+    # Dashboard Tabs
+    dcc.Tabs([
+        
+        dcc.Tab(label="Overview", children=[
+            html.Div(id="kpi-row", style={"display": "flex", "gap": "12px", "marginTop": "12px"}),
+            dcc.Graph(id="spike-table"),
+            dcc.Graph(id="time-curve"),
+        ]),
 
-            # Progression Curves
-            dcc.Tab(label="Progression Curves", children=[
-                dcc.Graph(id="progression-curves"),
-            ]),
+        # Funnel View Tab
+        dcc.Tab(label="Funnel", children=[
+            dcc.Graph(id="funnel-graph"),
+            dcc.Graph(id="fail-drop-graph"),
+        ]),
 
-            # Fairness Indicators
-            dcc.Tab(label="Fairness Indicators", children=[
-                dcc.Graph(id="fairness-chart"),
-            ]),
+        # Player Death Heatmap Tab
+        dcc.Tab(label="Heatmap", children=[
+            dcc.Graph(id="death-heatmap"),
+        ]),
 
-            # Comparison Mode
-            dcc.Tab(label="Comparison Mode", children=[
-                dcc.Graph(id="difficulty-comparison"),
-            ]),
+        # Combat & Healing Tab
+        dcc.Tab(label="Combat & Healing", children=[
+            dcc.Graph(id="combat-summary"),
+            html.Div([
+                dcc.Graph(id="hits-by-enemy"),
+                dcc.Graph(id="death-causes"),
+            ], style={"display":"grid","gridTemplateColumns":"1fr 1fr","gap":"12px"}),
+        ]),
 
-            # Balancing Toolkit
-            dcc.Tab(label="Balancing Toolkit", children=[
-                html.H3("Combat Tuning Toolkit"),
+        # Balancing Toolkit Tab
+        dcc.Tab(label="Balancing Toolkit", children=[
+            html.H3("Combat Tuning Toolkit (Prototype)"),
+
+            html.Div([
                 html.Div([
+                    html.H4("Parameters (Proposed)"),
                     html.Div([
-                        html.H4("Parameters (Proposed)"),
-                        html.Div([
-                            html.Label("Enemy Health"),
-                            dcc.Slider(
-                                id="p-enemyHpMult",
-                                min=0.7, max=1.5, step=0.05,
-                                value=DEFAULT_PARAMS["enemyHpMult"],
-                                tooltip={"placement": "bottom", "always_visible": False},
-                            ),
-                            html.Small("Higher = longer fights. Increases time-to-kill (TTK).", style={"color": "#666"}),
-                        ], style={"marginBottom": "14px"}),
-
-                        html.Div([
-                            html.Label("Enemy Damage"),
-                            dcc.Slider(
-                                id="p-enemyDamageMult",
-                                min=0.7, max=1.5, step=0.05,
-                                value=DEFAULT_PARAMS["enemyDamageMult"],
-                                tooltip={"placement": "bottom", "always_visible": False},
-                            ),
-                            html.Small("Higher = more damage taken during TTK. Increases fail probability.", style={"color": "#666"}),
-                        ], style={"marginBottom": "14px"}),
-
-                        html.Div([
-                            html.Label("Player Damage Output"),
-                            dcc.Slider(
-                                id="p-playerDamageMult",
-                                min=0.7, max=1.5, step=0.05,
-                                value=DEFAULT_PARAMS["playerDamageMult"],
-                                tooltip={"placement": "bottom", "always_visible": False},
-                            ),
-                            html.Small("Higher = shorter fights. Reduces exposure time to damage.", style={"color": "#666"}),
-                        ]),
-
-                        html.Hr(),
-
-                        html.Div([
-                            dcc.Input(id="sim-seed", type="number", value=123, style={"width": "120px"}),
-                            html.Span("Seed", style={"marginLeft": "8px", "marginRight": "14px"}),
-                            html.Button("Run Full Simulation (500)", id="run-sim-btn", n_clicks=0),
-                        ], style={"display": "flex", "alignItems": "center", "gap": "10px"}),
-
-                        html.Div(id="sim-mode-badge", style={"marginTop": "10px", "color": "#666"}),
-                    ], style={"flex": "1", "minWidth": "340px", "border": "1px solid #ddd", "borderRadius": "12px", "padding": "14px"}),
+                        html.Label("Enemy Health"),
+                        dcc.Slider(
+                            id="p-enemyHpMult",
+                            min=0.7, max=1.5, step=0.05,
+                            value=DEFAULT_PARAMS["enemyHpMult"],
+                            tooltip={"placement": "bottom", "always_visible": False},
+                        ),
+                        html.Small("Higher = longer fights. Increases time-to-kill (TTK).", style={"color": "#666"}),
+                    ], style={"marginBottom": "14px"}),
 
                     html.Div([
-                        html.H4("Predicted Impact (Baseline vs Proposed)"),
-                        html.Div(id="kpi-deltas", style={
-                            "display": "grid",
-                            "gridTemplateColumns": "1fr 1fr 1fr",
-                            "gap": "10px",
-                            "marginBottom": "10px",
-                        }),
-                        dcc.Graph(id="sim-reach-curve"),
-                        html.Div([
-                            dcc.Graph(id="sim-fail-by-stage"),
-                            dcc.Graph(id="sim-time-by-stage"),
-                        ], style={"display": "grid", "gridTemplateColumns": "1fr 1fr", "gap": "12px"}),
-                    ], style={"flex": "2", "minWidth": "520px"}),
-                ], style={"display": "flex", "gap": "14px", "alignItems": "flex-start"}),
+                        html.Label("Enemy Damage"),
+                        dcc.Slider(
+                            id="p-enemyDamageMult",
+                            min=0.7, max=1.5, step=0.05,
+                            value=DEFAULT_PARAMS["enemyDamageMult"],
+                            tooltip={"placement": "bottom", "always_visible": False},
+                        ),
+                        html.Small("Higher = more damage taken during TTK. Increases fail probability.", style={"color": "#666"}),
+                    ], style={"marginBottom": "14px"}),
 
-                html.Hr(),
+                    html.Div([
+                        html.Label("Player Damage Output"),
+                        dcc.Slider(
+                            id="p-playerDamageMult",
+                            min=0.7, max=1.5, step=0.05,
+                            value=DEFAULT_PARAMS["playerDamageMult"],
+                            tooltip={"placement": "bottom", "always_visible": False},
+                        ),
+                        html.Small("Higher = shorter fights. Reduces exposure time to damage.", style={"color": "#666"}),
+                    ]),
 
-                html.H4("Rule-based Suggestions"),
-                html.Div(id="rules-box", style={"border":"1px solid #ddd","borderRadius":"10px","padding":"10px"}),
+                    html.Hr(),
 
-                html.Hr(),
-                html.H4("Decision Log"),
-                html.Div([
-                    dcc.Input(id="designer-name", placeholder="Designer name", value="designer", style={"width":"200px","marginRight":"8px"}),
-                    dcc.Input(id="decision-stage", type="number", placeholder="Stage (optional)", style={"width":"160px","marginRight":"8px"}),
-                    dcc.Input(id="decision-difficulty", placeholder="Difficulty (optional)", style={"width":"180px","marginRight":"8px"}),
-                ], style={"marginBottom":"8px"}),
+                    html.Div([
+                        dcc.Input(id="sim-seed", type="number", value=123, style={"width": "120px"}),
+                        html.Span("Seed", style={"marginLeft": "8px", "marginRight": "14px"}),
+                        html.Button("Run Full Simulation (500)", id="run-sim-btn", n_clicks=0),
+                    ], style={"display": "flex", "alignItems": "center", "gap": "10px"}),
 
-                dcc.Textarea(
-                    id="decision-rationale",
-                    placeholder="Rationale: what you changed and why (reference the baseline vs proposed deltas)...",
-                    style={"width":"100%","height":"90px"}
-                ),
+                    html.Div(id="sim-mode-badge", style={"marginTop": "10px", "color": "#666"}),
+                ], style={"flex": "1", "minWidth": "340px", "border": "1px solid #ddd", "borderRadius": "12px", "padding": "14px"}),
 
                 html.Div([
-                    html.Button("Save Decision", id="save-decision-btn", n_clicks=0),
-                    html.Span("", id="save-decision-status", style={"marginLeft":"10px"})
-                ], style={"marginTop":"10px","marginBottom":"10px"}),
+                    html.H4("Predicted Impact (Baseline vs Proposed)"),
+                    html.Div(id="kpi-deltas", style={
+                        "display": "grid",
+                        "gridTemplateColumns": "1fr 1fr 1fr",
+                        "gap": "10px",
+                        "marginBottom": "10px",
+                    }),
+                    dcc.Graph(id="sim-reach-curve"),
+                    html.Div([
+                        dcc.Graph(id="sim-fail-by-stage"),
+                        dcc.Graph(id="sim-time-by-stage"),
+                    ], style={"display": "grid", "gridTemplateColumns": "1fr 1fr", "gap": "12px"}),
+                ], style={"flex": "2", "minWidth": "520px"}),
+            ], style={"display": "flex", "gap": "14px", "alignItems": "flex-start"}),
 
-                dcc.Graph(id="decision-log-table"),
-            ])
+            html.Hr(),
 
+            html.H4("Rule-based Suggestions"),
+            html.Div(id="rules-box", style={"border":"1px solid #ddd","borderRadius":"10px","padding":"10px"}),
 
+            html.Hr(),
+            html.H4("Decision Log"),
+            html.Div([
+                dcc.Input(id="designer-name", placeholder="Designer name", value="designer", style={"width":"200px","marginRight":"8px"}),
+                dcc.Input(id="decision-stage", type="number", placeholder="Stage (optional)", style={"width":"160px","marginRight":"8px"}),
+                dcc.Input(id="decision-difficulty", placeholder="Difficulty (optional)", style={"width":"180px","marginRight":"8px"}),
+            ], style={"marginBottom":"8px"}),
+
+            dcc.Textarea(
+                id="decision-rationale",
+                placeholder="Rationale: what you changed and why (reference the baseline vs proposed deltas)...",
+                style={"width":"100%","height":"90px"}
+            ),
+
+            html.Div([
+                html.Button("Save Decision", id="save-decision-btn", n_clicks=0),
+                html.Span("", id="save-decision-status", style={"marginLeft":"10px"})
+            ], style={"marginTop":"10px","marginBottom":"10px"}),
+
+            dcc.Graph(id="decision-log-table"),
         ])
-    ], style={"padding": "16px"})
-])
 
-# Initial Dropdown menu
+
+    ])
+], style={"padding": "16px"})
+
+# -----------------------------------------------------------------------------------------------------------------------------------
 @app.callback(
     Output("difficulty-dd", "options"),
-    Input("difficulty-dd", "value"),
-)
-
-def init_dropdown(_):
-    events = load_data()
-
-    if events is None or events.empty:
-        return [{"label": d, "value": d} for d in ["easy", "balanced", "hard"]]
-
-    df = normalize_events(events)
-
-    return difficulty_options(df)
-    
-# Dashboard Update
-@app.callback(
-    Output("funnel-view", "figure"),
-    Output("difficulty-spikes", "figure"),
-    Output("progression-curves", "figure"),
-    Output("fairness-chart", "figure"),
-    Output("difficulty-comparison", "figure"),
-    
+    Output("stage-dd", "options"),
     Input("difficulty-dd", "value")
 )
+def init_dropdowns(_):
+    events, deaths, _balance = load_data()
 
-
-def update_dashboard(difficulty):
-    events = load_data()
-
+    # difficulty options
     if events is None or events.empty:
-        empty = px.scatter(title="No telemetry data yet")
-        return empty, empty, empty, empty, empty
-    
+        diff_opts = [{"label": d, "value": d} for d in ["easy","medium","hard"]]
+    else:
+        df = normalize_events(events)
+        diff_opts = difficulty_options(df)
+
+    # stage options
+    if deaths is None or deaths.empty or "stage_number" not in deaths.columns:
+        stages = list(range(1, 11))
+    else:
+        stages = sorted(pd.to_numeric(deaths["stage_number"], errors="coerce").dropna().astype(int).unique().tolist())
+
+    stage_opts = [{"label": f"Stage {s}", "value": s} for s in stages]
+    return diff_opts, stage_opts
+
+
+
+@app.callback(
+    Output("kpi-row", "children"),
+    Output("funnel-graph", "figure"),
+    Output("fail-drop-graph", "figure"),
+    Output("time-curve", "figure"),
+    Output("spike-table", "figure"),
+    Output("death-heatmap", "figure"),
+    Output("combat-summary", "figure"),
+    Output("hits-by-enemy", "figure"),
+    Output("death-causes", "figure"),
+    Input("difficulty-dd", "value"),
+    Input("stage-dd", "value"),
+)
+def update_dashboard(difficulty, stage_value):
+    events, deaths, balance = load_data()
     df = normalize_events(events)
 
-    # Funnel
+    # Funnel + Time
     funnel = funnel_by_stage(df, difficulty=difficulty)
+    tdf = time_by_stage(df, difficulty=difficulty)
+    spikes = spike_detection(funnel, tdf)
+
+    # KPI
+    total_starts = int(funnel["starts"].sum()) if len(funnel) else 0
+    total_completes = int(funnel["completes"].sum()) if len(funnel) else 0
+    completion_rate = (total_completes / total_starts) if total_starts else 0
+
+    kpi = [
+        html.Div([html.H4("Sessions (starts)"), html.H3(f"{total_starts}")], style={"padding":"12px","border":"1px solid #ddd","borderRadius":"10px"}),
+        html.Div([html.H4("Completions"), html.H3(f"{total_completes}")], style={"padding":"12px","border":"1px solid #ddd","borderRadius":"10px"}),
+        html.Div([html.H4("Completion Rate"), html.H3(f"{completion_rate:.2%}")], style={"padding":"12px","border":"1px solid #ddd","borderRadius":"10px"}),
+        html.Div([html.H4("Spike Stages"), html.H3(f"{int(spikes['is_spike'].sum()) if len(spikes) else 0}")], style={"padding":"12px","border":"1px solid #ddd","borderRadius":"10px"}),
+    ]
+
+    # Funnel graph
     fig_funnel = px.bar(
-        funnel,
+        funnel, x="stage_id", y=["completes", "fails", "quits"],
+        title="Stage Funnel Counts (complete/fail/quit)", barmode="stack"
+    )
+
+    fig_rates = px.line(
+        funnel, x="stage_id", y=["completion_rate", "fail_rate", "dropoff_rate"],
+        title="Stage Rates"
+    )
+
+    # Time curve
+    fig_time = px.line(
+        tdf, x="stage_id", y=["median_duration_ms", "p75_duration_ms", "p90_duration_ms"],
+        title="Time-to-complete percentiles (ms)"
+    )
+
+    # Spike table (scatter)
+    spikes_view = spikes.copy()
+    spikes_view["spike_label"] = spikes_view["is_spike"].map({True: "SPIKE", False: "ok"})
+    fig_spike = px.scatter(
+        spikes_view, x="fail_rate", y="median_duration_ms", color="spike_label", hover_data=["stage_id"],
+        title="Spike Detection (fail_rate vs median_duration_ms)"
+    )
+
+    # Death heatmap
+    if stage_value is None:
+        stage_value = int(deaths["stage_number"].dropna().iloc[0]) if len(deaths) else 1
+
+    d = deaths[deaths["stage_number"] == stage_value].copy() if len(deaths) else pd.DataFrame(columns=["x_position","y_position"])
+    if len(d):
+        # 2D histogram heatmap
+        fig_heat = px.density_heatmap(
+            d, x="x_position", y="y_position", nbinsx=40, nbinsy=25,
+            title=f"Death Heatmap (Stage {stage_value})"
+        )
+    else:
+        fig_heat = px.scatter(title=f"Death Heatmap (Stage {stage_value}) - no data")
+
+    # Balance table
+    if len(balance):
+        fig_balance = px.bar(balance, x="setting_name", y="setting_value", title="Game Balance Settings (Sprint 2)")
+    else:
+        fig_balance = px.scatter(title="Game Balance Settings - no data")
+
+    # Combat report
+    combat = combat_by_stage(df, difficulty=difficulty)
+    fig_combat = px.bar(
+        combat,
         x="stage_id",
-        y=["starts","completes","fails"],
+        y=["enemy_kills","player_hits","heal_pickups","deaths","retries"],
         barmode="group",
-        title="Stage Completion Funnel"
+        title="Combat & Healing volume by stage"
     )
 
-    # Spike Detection
-    time_df = time_by_stage(df, difficulty=difficulty)
-    spikes = spike_detection(funnel, time_df)
+    hb = hits_by_enemy(df, difficulty=difficulty, stage_id=stage_value)
+    fig_hits_enemy = px.pie(
+        hb, names="enemy_type", values="hits",
+        title="Who is hitting the player? (hits by enemy type)"
+    ) if len(hb) else px.scatter(title="No player_hit events yet.")
 
-    fig_spikes = px.scatter(
-        spikes,
-        x="fail_rate",
-        y="median_duration_ms",
-        color="is_spike",
-        hover_data=["stage_id"],
-        title="Difficulty Spike Detection"
-    )
+    fr = fail_reasons(df, difficulty=difficulty, stage_id=stage_value)
+    fig_fail_causes = px.bar(
+        fr, x="cause", y="count",
+        title="Death causes"
+    ) if len(fr) else px.scatter(title="No death events yet.")
 
-    # Progression Curves
-    fig_progress = px.line(
-        time_df,
-        x="stage_id",
-        y=["median_duration_ms", "p75_duration_ms", "p90_duration_ms"],
-        title="Progression Curves (Time to Complete)"
-    )
 
-    # Fairness Indicators
-    median_time = df["duration_ms"].median()
-    fast_players = df[df["duration_ms"] <= median_time]
-    slow_players = df[df["duration_ms"] > median_time]
+    return kpi, fig_funnel, fig_rates, fig_time, fig_spike, fig_heat, fig_combat, fig_hits_enemy, fig_fail_causes
 
-    fairness = pd.DataFrame({
-        "group": ["fast_players", "slow_players"],
-        "avg_damage": [
-            fast_players["damage_taken"].mean(),
-            slow_players["damage_taken"].mean()
-        ]
-    })
-
-    fig_fairness = px.bar(
-        fairness,
-        x="group",
-        y="avg_damage",
-        title="Fairness Indicator (Damage Taken by Player Type)"
-    )
-
-    # Difficulty Compariosn
-    funnel_all = funnel_by_stage(df)
-
-    compare = funnel_all.groupby("stage_id")[["completion_rate"]].mean().reset_index()
-
-    fig_compare = px.line(
-        compare,
-        x="stage_id",
-        y="completion_rate",
-        title="Difficulty Comparison (Completion Rate)"
-    )
-
-    return fig_funnel, fig_spikes, fig_progress, fig_fairness, fig_compare
+# ------------------------------------------------------------------------------------------------------------------------------------------------
 
 @app.callback(
     Output("sim-mode-badge", "children"),
