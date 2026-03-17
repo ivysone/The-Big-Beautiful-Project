@@ -46,34 +46,33 @@ app.layout = html.Div([
 
         dcc.Tabs([
             # Funnel view
-            dcc.Tab(label="Funnel View", childern=[
+            dcc.Tab(label="Funnel View", children=[
                 dcc.Graph(id="funnel-view"),
             ]),
 
             # Difficulty Spikes
-            dcc.Tab(label="Difficulty Spikes", childern=[
+            dcc.Tab(label="Difficulty Spikes", children=[
                 dcc.Graph(id="difficulty-spikes"),
             ]),
 
             # Progression Curves
-            dcc.Tab(label="Progression Curves", childern=[
+            dcc.Tab(label="Progression Curves", children=[
                 dcc.Graph(id="progression-curves"),
             ]),
 
             # Fairness Indicators
-            dcc.Tab(label="Fairness Indicators", childern=[
+            dcc.Tab(label="Fairness Indicators", children=[
                 dcc.Graph(id="fairness-chart"),
             ]),
 
             # Comparison Mode
-            dcc.Tab(label="Comparison Mode", childern=[
+            dcc.Tab(label="Comparison Mode", children=[
                 dcc.Graph(id="difficulty-comparison"),
             ]),
 
             # Balancing Toolkit
             dcc.Tab(label="Balancing Toolkit", children=[
                 html.H3("Combat Tuning Toolkit"),
-
                 html.Div([
                     html.Div([
                         html.H4("Parameters (Proposed)"),
@@ -168,6 +167,7 @@ app.layout = html.Div([
         ])
     ], style={"padding": "16px"})
 ])
+
 # Initial Dropdown menu
 @app.callback(
     Output("difficulty-dd", "options"),
