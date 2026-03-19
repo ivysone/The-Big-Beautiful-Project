@@ -1,11 +1,24 @@
-import pandas as pd
-import plotly.express as px
-from dash import Dash, html, dcc, Input, Output, State
-import dash
-from .db import query_df
-from .metrics import normalize_events, funnel_by_stage, time_by_stage, spike_detection, combat_by_stage, hits_by_enemy, fail_reasons
 import json
 from datetime import datetime
+import pandas as pd
+import plotly.express as px
+import dash
+from dash import Dash, html, dcc, Input, Output, State
+from .db import query_df
+
+from .metrics import (
+    combat_by_stage,
+    comparison_mode_metrics,
+    compute_overview_kpis,
+    fairness_segments,
+    fail_reasons,
+    funnel_by_stage,
+    hits_by_enemy,
+    normalize_events,
+    progression_curves,
+    spike_detection,
+    time_by_stage,
+)
 
 from .balancing_toolkit import (
     DEFAULT_PARAMS,
@@ -16,14 +29,11 @@ from .balancing_toolkit import (
 )
 
 
-# Dashboard UI
-app = Dash(
-    __name__,
-    requests_pathname_prefix="/admin/",
-)
-
+# Dash App Setup
+app = Dash(__name__, requests_pathname_prefix="/admin/")
 app.title = "Telemetry Dashboard (Admin)"
 
+# Data Helpers
 def load_data():
     events = query_df("SELECT * FROM telemetry_events")
     deaths = query_df("SELECT * FROM death_heatmap")
@@ -34,10 +44,33 @@ def difficulty_options(df_norm):
     opts = sorted([x for x in df_norm["difficulty"].dropna().unique().tolist()])
     return [{"label": d, "value": d} for d in (opts if opts else ["easy","medium","hard"])]
 
+def card(title: str, value: str, subtitle: str | None = None):
+    """Reusable KPI card component for Overview and toolkit output."""
+    children = [html.H4(title, style={"marginBottom": "6px"}), html.H3(value, style={"margin": 0})]
+    if subtitle:
+        children.append(html.Div(subtitle, style={"marginTop": "6px", "color": "#666", "fontSize": "13px"}))
+    return html.Div(
+        children,
+        style={
+            "padding": "12px",
+            "border": "1px solid #ddd",
+            "borderRadius": "10px",
+            "minWidth": "160px",
+            "background": "#fff",
+        },
+    )
+
+def empty_figure(title: str):
+    """Consistent fallback chart when a dataset is empty."""
+    return px.scatter(title=title)
+
+
+# ========================================================================================
+
+# Dashboard Layout
 app.layout = html.Div([
     html.H2("📊 Telemetry Analytics Dashboard"),
-
-    
+    # Common Dropdown Menu
     html.Div([
         # Difficulty Dropdown
         html.Div([
@@ -46,26 +79,50 @@ app.layout = html.Div([
         ], style={"width": "250px", "display": "inline-block", "marginRight": "16px"}),
         # Stage Dropdown
         html.Div([
-            html.Label("Stage (Heatmap)"),
+            html.Label("Stage"),
             dcc.Dropdown(id="stage-dd", placeholder="Select stage", clearable=False),
         ], style={"width": "250px", "display": "inline-block"}),
     ], style={"marginBottom": "16px"}),
-
-
     
     # Dashboard Tabs
     dcc.Tabs([
-        
+        # Overview Tab
         dcc.Tab(label="Overview", children=[
-            html.Div(id="kpi-row", style={"display": "flex", "gap": "12px", "marginTop": "12px"}),
-            dcc.Graph(id="spike-table"),
-            dcc.Graph(id="time-curve"),
+            html.Div(id="kpi-row", style={
+                "display": "grid",
+                "gridTemplateColumns": "repeat(auto-fit, minmax(180px, 1fr))",
+                "gap": "12px",
+                "marginTop": "12px",
+            }),
         ]),
 
         # Funnel View Tab
         dcc.Tab(label="Funnel", children=[
             dcc.Graph(id="funnel-graph"),
             dcc.Graph(id="fail-drop-graph"),
+        ]),
+        
+        # Difficulty Spikes Tab
+        dcc.Tab(label="Difficulty Spikes", children=[
+            dcc.Graph(id="spike-stage-bar"),
+            dcc.Graph(id="spike-table"),
+        ]),
+        
+        # Progression Cuves Tab
+        dcc.Tab(label="Progression Curves", children=[
+            dcc.Graph(id="time-curve"),
+            dcc.Graph(id="resource-curve"),
+        ]),
+
+        # Fairness Indicators Tab
+        dcc.Tab(label="Fairness Indicators", children=[
+            dcc.Graph(id="fairness-speed"),
+            dcc.Graph(id="fairness-style"),
+        ]),
+        
+        # Comparison Mode Tab
+        dcc.Tab(label="Comparison Mode", children=[
+            dcc.Graph(id="comparison-mode-graph"),
         ]),
 
         # Player Death Heatmap Tab
@@ -84,8 +141,7 @@ app.layout = html.Div([
 
         # Balancing Toolkit Tab
         dcc.Tab(label="Balancing Toolkit", children=[
-            html.H3("Combat Tuning Toolkit (Prototype)"),
-
+            html.H3("Combat Tuning Toolkit"),
             html.Div([
                 html.Div([
                     html.H4("Parameters (Proposed)"),
@@ -150,7 +206,6 @@ app.layout = html.Div([
             ], style={"display": "flex", "gap": "14px", "alignItems": "flex-start"}),
 
             html.Hr(),
-
             html.H4("Rule-based Suggestions"),
             html.Div(id="rules-box", style={"border":"1px solid #ddd","borderRadius":"10px","padding":"10px"}),
 
@@ -178,9 +233,13 @@ app.layout = html.Div([
 
 
     ])
-], style={"padding": "16px"})
+], style={"padding": "16px", "background": "#fafafa"})
 
-# -----------------------------------------------------------------------------------------------------------------------------------
+
+
+# ====================================================================================
+
+# Dropdowns
 @app.callback(
     Output("difficulty-dd", "options"),
     Output("stage-dd", "options"),
@@ -205,18 +264,25 @@ def init_dropdowns(_):
     stage_opts = [{"label": f"Stage {s}", "value": s} for s in stages]
     return diff_opts, stage_opts
 
+# ==============================================================================
 
-
+# Main Dashboard Update
 @app.callback(
     Output("kpi-row", "children"),
     Output("funnel-graph", "figure"),
     Output("fail-drop-graph", "figure"),
     Output("time-curve", "figure"),
+    Output("resource-curve", "figure"),
+    Output("spike-stage-bar", "figure"),
     Output("spike-table", "figure"),
+    Output("fairness-speed", "figure"),
+    Output("fairness-style", "figure"),
+    Output("comparison-mode-graph", "figure"),
     Output("death-heatmap", "figure"),
     Output("combat-summary", "figure"),
     Output("hits-by-enemy", "figure"),
     Output("death-causes", "figure"),
+    
     Input("difficulty-dd", "value"),
     Input("stage-dd", "value"),
 )
@@ -224,95 +290,232 @@ def update_dashboard(difficulty, stage_value):
     events, deaths, balance = load_data()
     df = normalize_events(events)
 
-    # Funnel + Time
+    # Shared Metric Frames
     funnel = funnel_by_stage(df, difficulty=difficulty)
     tdf = time_by_stage(df, difficulty=difficulty)
     spikes = spike_detection(funnel, tdf)
+    durations, resources = progression_curves(df, difficulty=difficulty)
+    fairness = fairness_segments(df, difficulty=difficulty)
+    comparison = comparison_mode_metrics(df)
+    overview = compute_overview_kpis(df, difficulty=difficulty)
 
-    # KPI
-    total_starts = int(funnel["starts"].sum()) if len(funnel) else 0
-    total_completes = int(funnel["completes"].sum()) if len(funnel) else 0
-    completion_rate = (total_completes / total_starts) if total_starts else 0
-
-    kpi = [
-        html.Div([html.H4("Sessions (starts)"), html.H3(f"{total_starts}")], style={"padding":"12px","border":"1px solid #ddd","borderRadius":"10px"}),
-        html.Div([html.H4("Completions"), html.H3(f"{total_completes}")], style={"padding":"12px","border":"1px solid #ddd","borderRadius":"10px"}),
-        html.Div([html.H4("Completion Rate"), html.H3(f"{completion_rate:.2%}")], style={"padding":"12px","border":"1px solid #ddd","borderRadius":"10px"}),
-        html.Div([html.H4("Spike Stages"), html.H3(f"{int(spikes['is_spike'].sum()) if len(spikes) else 0}")], style={"padding":"12px","border":"1px solid #ddd","borderRadius":"10px"}),
+    # Overview
+    kpi_cards = [
+        card("Sessions", f"{overview['sessions']}", "unique session_ids"),
+        card("Players", f"{overview['players']}", "unique users"),
+        card("Completion Rate", f"{overview['completion_rate']:.1%}", f"{overview['completes']} completions"),
+        card("Fail Rate", f"{overview['fail_rate']:.1%}", f"{overview['fails']} fails"),
+        card("Spike Stages", f"{overview['spike_stages']}", f"across {overview['active_stages']} stages"),
+        card("Median Completion Time", f"{overview['median_minutes']:.2f} min", "stage_complete events"),
     ]
 
-    # Funnel graph
-    fig_funnel = px.bar(
-        funnel, x="stage_id", y=["completes", "fails", "quits"],
-        title="Stage Funnel Counts (complete/fail/quit)", barmode="stack"
-    )
+    # Funnel
+    if len(funnel):
+        fig_funnel = px.bar(
+            funnel,
+            x="stage_id",
+            y=["completes", "fails", "quits"],
+            title="Stage Funnel Counts (complete / fail / quit)",
+            barmode="stack",
+        )
+        fig_rates = px.line(
+            funnel,
+            x="stage_id",
+            y=["completion_rate", "fail_rate", "dropoff_rate"],
+            title="Stage Rates",
+            markers=True,
+        )
+        fig_rates.update_layout(yaxis_tickformat=".0%")
+    else:
+        fig_funnel = empty_figure("Stage Funnel Counts - no data")
+        fig_rates = empty_figure("Stage Rates - no data")
 
     fig_rates = px.line(
         funnel, x="stage_id", y=["completion_rate", "fail_rate", "dropoff_rate"],
         title="Stage Rates"
     )
 
-    # Time curve
-    fig_time = px.line(
-        tdf, x="stage_id", y=["median_duration_ms", "p75_duration_ms", "p90_duration_ms"],
-        title="Time-to-complete percentiles (ms)"
-    )
+    # Progression Curve
+    if len(durations):
+        fig_time = px.box(
+            durations,
+            x="stage_id",
+            y="duration_minutes",
+            points="all",
+            title="Time-to-complete distribution by stage (minutes)",
+        )
+    else:
+        fig_time = empty_figure("Time-to-complete distribution - no data")
 
-    # Spike table (scatter)
-    spikes_view = spikes.copy()
-    spikes_view["spike_label"] = spikes_view["is_spike"].map({True: "SPIKE", False: "ok"})
-    fig_spike = px.scatter(
-        spikes_view, x="fail_rate", y="median_duration_ms", color="spike_label", hover_data=["stage_id"],
-        title="Spike Detection (fail_rate vs median_duration_ms)"
-    )
+    if len(resources):
+        resource_long = resources[[
+            "stage_id",
+            "cumulative_heal_pickups",
+            "cumulative_heal_amount",
+            "cumulative_enemy_kills",
+        ]].melt(id_vars="stage_id", var_name="metric", value_name="value")
+        fig_resource = px.line(
+            resource_long,
+            x="stage_id",
+            y="value",
+            color="metric",
+            markers=True,
+            title="Progression curves: cumulative resource / progression accumulation",
+        )
+    else:
+        fig_resource = empty_figure("Progression resource curves - no data")
+
+    # Difficulty Spikes
+    if len(spikes):
+        fig_spike_bar = px.bar(
+            spikes.sort_values(["is_spike", "spike_score", "stage_id"], ascending=[False, False, True]),
+            x="stage_id",
+            y="spike_score",
+            color="is_spike",
+            title="Difficulty spikes: automatically highlighted stages",
+            hover_data=["fail_rate", "median_duration_ms", "completion_rate", "dropoff_rate"],
+        )
+        spikes_view = spikes.copy()
+        spikes_view["spike_label"] = spikes_view["is_spike"].map({True: "SPIKE", False: "ok"})
+        fig_spike = px.scatter(
+            spikes_view,
+            x="fail_rate",
+            y="median_duration_ms",
+            color="spike_label",
+            hover_data=["stage_id", "spike_score", "completion_rate", "dropoff_rate"],
+            title="Fail rate vs median duration (spike detection view)",
+        )
+        fig_spike.update_layout(xaxis_tickformat=".0%")
+    else:
+        fig_spike_bar = empty_figure("Difficulty spikes - no data")
+        fig_spike = empty_figure("Spike detection view - no data")
+
+    # Fairness Indicators
+    if len(fairness):
+        speed = fairness[fairness["segment_type"] == "Speed"].copy()
+        style = fairness[fairness["segment_type"] == "Play style"].copy()
+
+        fig_fair_speed = (
+            px.bar(
+                speed.melt(
+                    id_vars=["segment"],
+                    value_vars=["completion_rate", "fail_rate", "median_duration_minutes"],
+                    var_name="metric",
+                    value_name="value",
+                ),
+                x="metric",
+                y="value",
+                color="segment",
+                barmode="group",
+                title="Fairness indicators: Fast vs Slow players",
+            )
+            if len(speed)
+            else empty_figure("Fairness indicators (Fast vs Slow) - insufficient data")
+        )
+        if len(speed):
+            fig_fair_speed.update_xaxes(title=None)
+
+        fig_fair_style = (
+            px.bar(
+                style.melt(
+                    id_vars=["segment"],
+                    value_vars=["completion_rate", "fail_rate", "avg_heals", "avg_player_hits", "avg_enemy_kills"],
+                    var_name="metric",
+                    value_name="value",
+                ),
+                x="metric",
+                y="value",
+                color="segment",
+                barmode="group",
+                title="Fairness indicators: Cautious vs Aggressive players",
+            )
+            if len(style)
+            else empty_figure("Fairness indicators (Cautious vs Aggressive) - insufficient data")
+        )
+        if len(style):
+            fig_fair_style.update_xaxes(title=None)
+    else:
+        fig_fair_speed = empty_figure("Fairness indicators - no data")
+        fig_fair_style = empty_figure("Fairness indicators - no data")
+
+    # Comparison Mode
+    if len(comparison):
+        fig_compare = px.bar(
+            comparison,
+            x="metric",
+            y="value",
+            color="config",
+            barmode="group",
+            title="Comparison mode: easy vs balanced vs hard",
+        )
+        fig_compare.update_xaxes(title=None)
+    else:
+        fig_compare = empty_figure("Comparison mode - no configuration data")
 
     # Death heatmap
     if stage_value is None:
-        stage_value = int(deaths["stage_number"].dropna().iloc[0]) if len(deaths) else 1
+        stage_value = int(deaths["stage_number"].dropna().iloc[0]) if len(deaths) and deaths["stage_number"].dropna().any() else 1
 
-    d = deaths[deaths["stage_number"] == stage_value].copy() if len(deaths) else pd.DataFrame(columns=["x_position","y_position"])
-    if len(d):
-        # 2D histogram heatmap
+    stage_deaths = deaths[deaths["stage_number"] == stage_value].copy() if len(deaths) else pd.DataFrame(columns=["x_position", "y_position"])
+    if len(stage_deaths):
         fig_heat = px.density_heatmap(
-            d, x="x_position", y="y_position", nbinsx=40, nbinsy=25,
-            title=f"Death Heatmap (Stage {stage_value})"
+            stage_deaths,
+            x="x_position",
+            y="y_position",
+            nbinsx=40,
+            nbinsy=25,
+            title=f"Death Heat Map (Stage {stage_value})",
         )
     else:
-        fig_heat = px.scatter(title=f"Death Heatmap (Stage {stage_value}) - no data")
-
-    # Balance table
-    if len(balance):
-        fig_balance = px.bar(balance, x="setting_name", y="setting_value", title="Game Balance Settings (Sprint 2)")
-    else:
-        fig_balance = px.scatter(title="Game Balance Settings - no data")
+        fig_heat = empty_figure(f"Death Heat Map (Stage {stage_value}) - no data")
 
     # Combat report
     combat = combat_by_stage(df, difficulty=difficulty)
-    fig_combat = px.bar(
-        combat,
-        x="stage_id",
-        y=["enemy_kills","player_hits","heal_pickups","deaths","retries"],
-        barmode="group",
-        title="Combat & Healing volume by stage"
-    )
+    if len(combat):
+        fig_combat = px.bar(
+            combat,
+            x="stage_id",
+            y=["enemy_kills", "player_hits", "heal_pickups", "deaths", "retries"],
+            barmode="group",
+            title="Combat & Healing volume by stage",
+        )
+    else:
+        fig_combat = empty_figure("Combat & Healing - no data")
 
     hb = hits_by_enemy(df, difficulty=difficulty, stage_id=stage_value)
-    fig_hits_enemy = px.pie(
-        hb, names="enemy_type", values="hits",
-        title="Who is hitting the player? (hits by enemy type)"
-    ) if len(hb) else px.scatter(title="No player_hit events yet.")
+    fig_hits_enemy = (
+        px.pie(hb, names="enemy_type", values="hits", title="Who is hitting the player? (hits by enemy type)")
+        if len(hb)
+        else empty_figure("No player_hit events yet.")
+    )
 
     fr = fail_reasons(df, difficulty=difficulty, stage_id=stage_value)
-    fig_fail_causes = px.bar(
-        fr, x="cause", y="count",
-        title="Death causes"
-    ) if len(fr) else px.scatter(title="No death events yet.")
+    fig_fail_causes = (
+        px.bar(fr, x="cause", y="count", title="Death causes")
+        if len(fr)
+        else empty_figure("No death events yet.")
+    )
 
-
-    return kpi, fig_funnel, fig_rates, fig_time, fig_spike, fig_heat, fig_combat, fig_hits_enemy, fig_fail_causes
-
+    return (
+        kpi_cards,
+        fig_funnel,
+        fig_rates,
+        fig_time,
+        fig_resource,
+        fig_spike_bar,
+        fig_spike,
+        fig_fair_speed,
+        fig_fair_style,
+        fig_compare,
+        fig_heat,
+        fig_combat,
+        fig_hits_enemy,
+        fig_fail_causes,
+    )
+    
 # ------------------------------------------------------------------------------------------------------------------------------------------------
 
+# Balancing Toolkit Callbacks
 @app.callback(
     Output("sim-mode-badge", "children"),
     Output("kpi-deltas", "children"),
