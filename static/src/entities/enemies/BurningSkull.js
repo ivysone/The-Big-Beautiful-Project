@@ -80,9 +80,6 @@ export class BurningSkull extends Phaser.Physics.Matter.Sprite {
     );
   }
 
-  // ANIMATIONS 
-  // Row 0: fly     - frames 0–3  (4 frames)
-  // Row 1: explode - frames 4–11 (8 frames, but sheet cols may vary)
 
   initAnimations(scene) {
     if (!scene.anims.exists("burningSkull_fly")) {

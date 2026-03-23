@@ -74,7 +74,7 @@ export const levelTenConfig = {
   },
 
   spawns: {
-    player: { x: 2000, y: 684 },
+    player: { x: 0, y: 684 },
 
     extraEnemies: [
       {
@@ -88,8 +88,8 @@ export const levelTenConfig = {
   },
 
   introCutscene: {
-    targetX: 2000,
-    duration: 1800,
+    targetX: 240,
+    duration: 1400,
   },
 
   damageTiles: {

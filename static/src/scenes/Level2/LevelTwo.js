@@ -17,6 +17,15 @@ export class LevelTwo extends BaseLevel {
         "The village beyond these woods is under attack",
         "Please help them"
       ],
+      knight_cont: [
+        "There are still monsters roaming these woods",
+        "It would be best if we clean up all enemies that remain here before proceeding...",
+        "Return to me once you have finished.",
+      ],
+      knight_cont2: [
+        "I see you have defeated all the monsters. Well done brave hero",
+        "The fight is not yet over, you must save the village!",
+      ],
     };
 
     return table[dialogueId] ?? ["..."];

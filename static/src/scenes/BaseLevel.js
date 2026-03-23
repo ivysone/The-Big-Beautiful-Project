@@ -1,4 +1,3 @@
-// scenes/BaseLevel.js
 import { Mplayer } from "../player/Mplayer.js";
 import { ArcherEnemy } from "../entities/enemies/ArcherEnemy.js";
 import { HUD } from "../player/HUD.js";
@@ -20,6 +19,7 @@ import { SkullBoss } from "../entities/enemies/FinalBoss.js";
 import { RatEnemy } from "../entities/enemies/RatEnemy.js";
 import { PlantEnemy } from "../entities/enemies/PlantEnemy.js";
 import { BurningSkull } from "../entities/enemies/BurningSkull.js";
+import { MushroomEnemy } from "../entities/enemies/MushroomEnemy.js";
 
 
 const DEFAULT_HUD_KEYS = {
@@ -40,6 +40,7 @@ const ENEMY_REGISTRY = {
   RatEnemy,
   PlantEnemy,
   BurningSkull,
+  MushroomEnemy,
 };
 
 const NPC_REGISTRY = {
@@ -333,6 +334,7 @@ export class BaseLevel extends Phaser.Scene {
     this.stageState = {
       stageCleared: false,
       enemiesRemaining: 0,
+      totalEnemies: 0,
     };
 
     this.cursors = this.input.keyboard.createCursorKeys();
@@ -701,6 +703,7 @@ export class BaseLevel extends Phaser.Scene {
         });
       }
     }
+    this.stageState.totalEnemies = this.stageState.enemiesRemaining;
   }
 
   // PICKUPS
@@ -960,7 +963,7 @@ export class BaseLevel extends Phaser.Scene {
         (this.stageState.enemiesRemaining ?? 1) - 1
       );
 
-      if (this.stageState.enemiesRemaining === 0) {
+      if (this.stageState.enemiesRemaining <= Math.floor(this.stageState.totalEnemies * 0.3)) {
         this.stageState.stageCleared = true;
       }
 

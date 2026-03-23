@@ -93,7 +93,7 @@ export const levelFourConfig = {
   },
 
   spawns: {
-    player: { x: 100, y: 900 },
+    player: { x: 0, y: 1100 },
     npcs: [
       { type: "KnightNpc", x: 300, y: 1100 },
     ],
@@ -108,7 +108,7 @@ export const levelFourConfig = {
   },
 
   introCutscene: {
-    targetX: 300,
+    targetX: 250,
     duration: 2000,
   },
 

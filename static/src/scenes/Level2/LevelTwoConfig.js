@@ -102,14 +102,15 @@ export const levelTwoConfig = {
   spawns: {
     player: { x: 0, y: 748 },
     npcs: [
-      { type: "PeasantNpc", x: 220, y: 204 },
-      { type: "KnightNpc", x: 9470, y: 1228 },
+      { type: "PeasantNpc", x: 273, y: 748 },
+      { type: "KnightNpc", x: 9400, y: 492 },
     ],
   },
 
   enemyObjectLayers: {
     Goblins: "GoblinEnemy",
     Slimes: "SlimeEnemy",
+    Mushrooms: "MushroomEnemy",
   },
 
   introCutscene: {
