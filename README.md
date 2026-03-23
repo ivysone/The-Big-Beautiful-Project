@@ -122,6 +122,12 @@ A simulation-based tool that predicts the impact of combat tuning changes **befo
 - Pandas
 - SQLite / CSV storage
 
+### Testing                                                                                                                            
+- Pytest
+- Pytest-asyncio
+- Httpx
+- FastAPI
+
 ### Deployment
 - Local development
 - Hosted backend & dashboard (Fly.io)
