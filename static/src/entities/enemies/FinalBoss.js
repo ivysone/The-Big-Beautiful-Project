@@ -1,4 +1,6 @@
 import { CATS } from "../../utils/physicsCategories.js";
+import { BurningSkull } from "./BurningSkull.js";
+import { EyeEnemy } from "./EyeEnemy.js";
 
 export class SkullBoss extends Phaser.Physics.Matter.Sprite {
   /**
@@ -44,7 +46,7 @@ export class SkullBoss extends Phaser.Physics.Matter.Sprite {
     this.setScale(1.5);
 
     // Boss stats
-    this.maxHP = 300;
+    this.maxHP = 200;
     this.hp = this.maxHP;
     this.isDead = false;
     
@@ -107,6 +109,13 @@ export class SkullBoss extends Phaser.Physics.Matter.Sprite {
     this.lastFireTick = 0;
     this.fireHeightAbovePlayer = 70;
     this.fireAlignTolerance = 8;
+
+    // Summon attack
+    this.summonWindupMs = 1000;
+    this.summonWindupEndTime = 0;
+    this.summonCount = 3;
+    this.summonRadius = 110;
+    this.maxSummonsAlive = 6;
 
     // Facing
     this.facing = 1;
@@ -296,6 +305,12 @@ export class SkullBoss extends Phaser.Physics.Matter.Sprite {
       return;
     }
 
+    // Summon Windup
+    if (this.phase === "summon_windup") {
+      this.handleSummonWindupPhase(time);
+      return;
+    }
+
     // Dash phase
     if (this.phase === "dash") {
       this.handleDashPhase(time);
@@ -374,23 +389,136 @@ export class SkullBoss extends Phaser.Physics.Matter.Sprite {
   chooseAttack(distToPlayer) {
     if (this.isDead) return;
 
-    // Bias by range:
-    // - closer = more likely dash
-    // - mid/far = more likely fire
+    const aliveSummons = this.countAliveEyes();
+    const canSummon = aliveSummons < this.maxSummonsAlive;
+
     const roll = Math.random();
 
-    if (distToPlayer < 140 && roll < 0.65) {
-      this.startDashAttack();
+    // Close range: mostly dash, sometimes fire attack
+    if (distToPlayer < 140) {
+      if (roll < 0.4) {
+        this.startFireAttack();
+      } else {
+        this.startDashAttack();
+      }
       return;
     }
 
+    // Mid range: mix all three
     if (distToPlayer < 320) {
-      if (roll < 0.55) this.startFireAttack();
-      else this.startDashAttack();
+      if (canSummon && roll < 0.25) {
+        this.startSummonAttack();
+      } else if (roll < 0.6) {
+        this.startFireAttack();
+      } else {
+        this.startDashAttack();
+      }
       return;
     }
 
-    this.startFireAttack();
+    // Far range: fire or summon
+    if (canSummon && roll < 0.4) {
+      this.startSummonAttack();
+    } else {
+      this.startFireAttack();
+    }
+  }
+
+  startSummonAttack() {
+    if (this.isDead) return;
+
+    this.phase = "summon_windup";
+    this.isAttacking = true;
+
+    this.setDashActive(false);
+    this.setFireActive(false);
+    this.setVelocity(0, 0);
+
+    this.baseDashWindupPos.x = this.x;
+    this.baseDashWindupPos.y = this.y;
+
+    this.summonWindupEndTime = this.scene.time.now + this.summonWindupMs;
+
+    if (this.anims.currentAnim?.key !== "skullIdle") {
+      this.play("skullIdle", true);
+    }
+  }
+
+  handleSummonWindupPhase(time) {
+    const Body = Phaser.Physics.Matter.Matter.Body;
+
+    this.setVelocity(0, 0);
+    this.setDashActive(false);
+    this.setFireActive(false);
+
+    if (this.anims.currentAnim?.key !== "skullIdle") {
+      this.play("skullIdle", true);
+    }
+
+    const shake = this.summonShakeAmount ?? this.dashShakeAmount ?? 6;
+    const shakeX = Phaser.Math.Between(-shake, shake);
+    const shakeY = Phaser.Math.Between(-shake, shake);
+
+    Body.setPosition(this.body, {
+      x: this.baseDashWindupPos.x + shakeX,
+      y: this.baseDashWindupPos.y + shakeY,
+    });
+
+    if (time >= this.summonWindupEndTime) {
+      Body.setPosition(this.body, {
+        x: this.baseDashWindupPos.x,
+        y: this.baseDashWindupPos.y,
+      });
+
+      this.spawnEyes();
+
+      this.isAttacking = false;
+      this.phase = "recover";
+      this.phaseUntil = time + 700;
+
+      if (this.anims.currentAnim?.key !== "skullIdle") {
+        this.play("skullIdle", true);
+      }
+    }
+  }
+
+  spawnEyes() {
+    if (!this.scene || this.isDead) return;
+
+    const count = Math.max(1, this.summonCount ?? 3);
+    const radius = this.summonRadius ?? 110;
+
+    for (let i = 0; i < count; i++) {
+      const angle =
+        (Math.PI * 2 * i) / count + Phaser.Math.FloatBetween(-0.25, 0.25);
+
+      const spawnX = this.x + Math.cos(angle) * radius;
+      const spawnY = this.y + Math.sin(angle) * radius;
+
+      const skull = new EyeEnemy(this.scene, spawnX, spawnY, {
+        target: this.target,
+      });
+
+      skull.isEnemy = true;
+      skull.isSummon = true;
+      skull.summonedByBoss = this;
+
+      if (Array.isArray(this.scene.enemies)) {
+        this.scene.enemies.push(skull);
+      }
+    }
+  }
+
+  countAliveEyes() {
+    if (!Array.isArray(this.scene?.enemies)) return 0;
+
+    return this.scene.enemies.filter(
+      (enemy) =>
+        enemy &&
+        enemy.active !== false &&
+        !enemy.isDead &&
+        enemy.constructor?.name === "EyeEnemy"
+    ).length;
   }
 
   handleDashWindupPhase(time) {

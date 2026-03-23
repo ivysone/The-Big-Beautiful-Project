@@ -95,8 +95,7 @@ export const levelFourConfig = {
   spawns: {
     player: { x: 100, y: 900 },
     npcs: [
-      { type: "PeasantNpc", x: 250, y: 900 },
-      { type: "KnightNpc", x: 1400, y: 900 },
+      { type: "KnightNpc", x: 300, y: 1100 },
     ],
   },
 

@@ -11,11 +11,12 @@ export class LevelTwo extends BaseLevel {
     const table = {
       peasant_intro: [
         "The forest ahead is cursed.",
-        "Watch your footing, and avoid the dangerous ground.",
+        "Watch your footing, and avoid the plantlife.",
       ],
       knight_intro: [
-        "You made it this far.",
-        "The deeper woods are even more dangerous.",
+        "Well done making it this far.",
+        "The village beyond these woods is under attack",
+        "Please help them"
       ],
     };
 

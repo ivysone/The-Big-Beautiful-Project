@@ -1,9 +1,10 @@
-import { Start } from './scenes/Start.js';
 import { LevelOne } from './scenes/LevelOne.js';
 import { LevelTwo } from './scenes/LevelTwo.js';
-import { TestLevel } from './scenes/TestLevel.js';
 import { LevelThree } from './scenes/LevelThree.js';
 import { LevelFour } from './scenes/LevelFour.js';
+import { LevelTen } from './scenes/LevelTen.js';
+import { LevelSix } from './scenes/LevelSix.js';
+import { LevelSeven } from './scenes/levelSeven.js';
 
 const config = {
     type: Phaser.AUTO,
@@ -15,10 +16,13 @@ const config = {
     backgroundColor: '#000000',
     pixelArt: true,
     scene: [
-        LevelFour,
-        LevelThree,
-        LevelTwo,
         LevelOne,
+        LevelTwo,
+        LevelThree,
+        LevelFour,
+        LevelSix,
+        LevelSeven,
+        LevelTen
     ],
     scale: {
         mode: Phaser.Scale.ENVELOP,

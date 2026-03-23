@@ -177,6 +177,11 @@ export class BaseLevel extends Phaser.Scene {
       frameWidth: 16,
       frameHeight: 16,
     });
+
+    this.load.spritesheet("portal", "/static/assets/LevelDesign/MedievalFantasyTiles1/portal.png", {
+      frameWidth: 64,
+      frameHeight: 64,
+    });
   }
 
   preloadParallaxAssets() {
