@@ -1,4 +1,4 @@
-import { BaseLevel } from "./BaseLevel.js";
+import { BaseLevel } from "../BaseLevel.js";
 import { levelTenConfig } from "./configs/LevelTenConfig.js";
 
 export class LevelTen extends BaseLevel {

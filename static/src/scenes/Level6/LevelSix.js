@@ -1,9 +1,9 @@
-import { BaseLevel } from "./BaseLevel.js";
-import { levelSevenConfig } from "./configs/LevelSevenConfig.js";
+import { BaseLevel } from "../BaseLevel.js";
+import { levelSixConfig } from "./configs/LevelSixConfig.js";
 
-export class LevelSeven extends BaseLevel {
+export class LevelSix extends BaseLevel {
   constructor() {
-    super(levelSevenConfig);
+    super(levelSixConfig);
   }
   getDialogueLines(dialogueId) {
     const table = {
