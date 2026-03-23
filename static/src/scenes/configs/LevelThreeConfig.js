@@ -125,17 +125,7 @@ export const levelThreeConfig = {
   },
 
   spawns: {
-    player: { x: 0, y: 1004 },
-    npcs: [
-      { type: "PeasantNpc", x: 250, y: 800 },
-      { type: "KnightNpc", x: 1200, y: 800 },
-    ],
-  },
-
-
-  enemyObjectLayers: {
-    Orcs: "OrcEnemy",
-    Slimes: "SlimeEnemy",
+    player: { x: 0, y: 972 },
   },
 
   introCutscene: {
@@ -153,5 +143,19 @@ export const levelThreeConfig = {
     activeProperty: "active",
   },
 
-  autoSpawnEnemies: true,
+  defense: {
+    enabled: true,
+    durationMs: 60000,
+    housesLayer: "Houses",
+    portalsLayer: "Portals",
+    houseMaxHp: 500,
+    houseDamagePerHit: 2,
+    houseHitCooldownMs: 1000,
+    maxDestroyed: 3,
+    waveIntervalMs: 20000,
+    enemiesPerWave: 10,
+    enemyTypes: ["OrcEnemy", "DamnedEnemy", "EyeEnemy", "BatEnemy", "BurningSkull"],
+  },
+
+  autoSpawnEnemies: false,
 };
