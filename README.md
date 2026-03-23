@@ -59,24 +59,29 @@ Gameplay events are sent from the game client to a backend API and stored for an
 - `stage_complete`
 - `fail`
 - `retry`
-- `death` (cause + position)
+- `death`
 - `player_hit` (damage + enemy type)
 - `enemy_kill`
 - `heal_pickup`
+- `pickup_spawn`
+- `enemy_spawn`
 - `parry_success`
+- `dialogue_start`
+- `dialogue_end`
 
 ## Analytics Dashboard
 
 The admin dashboard is built using **Python, Dash, and Plotly**.
 
 ### Key Views
-- **Funnel Analysis** 
-- **Completion & Fail Rates by Stage**
-- **Time-to-Complete Percentiles**
+- **Overview (KPI Summary)**
+- **Funnel**
+- **Difficulty Spike**
+- **Progression Curves**
+- **Fairness Indicators**
+- **Comparison Mode**
 - **Death Heatmaps**
 - **Combat & Healing Summary**
-- **Death Causes**
-- **Enemy Impact Analysis**
 
 This allows designers to quickly identify difficulty spikes, unfair encounters, and pacing issues.
 
