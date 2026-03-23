@@ -83,6 +83,12 @@ app.layout = html.Div([
             dcc.Dropdown(id="stage-dd", placeholder="Select stage", clearable=False),
         ], style={"width": "250px", "display": "inline-block"}),
     ], style={"marginBottom": "16px"}),
+        # Export currently filtered telemetry as CSV
+        html.Div([
+            html.Label("Export"),
+            html.Button("Download Telemetry CSV", id="export-csv-btn", n_clicks=0),
+            dcc.Download(id="download-telemetry-csv"),
+    ], style={"display": "inline-block", "verticalAlign": "top"}),
     
     # Dashboard Tabs
     dcc.Tabs([
@@ -717,6 +723,33 @@ def refresh_decision_log(_):
     return px.scatter(df, x="ts_iso", y="designer", hover_data=["stage_id","difficulty","changes_json","rationale_text"],
                       title="Decision Log (hover for details)")
 
+# Export Callback
+@app.callback(
+    Output("download-telemetry-csv", "data"),
+    Input("export-csv-btn", "n_clicks"),
+    State("difficulty-dd", "value"),
+    State("stage-dd", "value"),
+    prevent_initial_call=True,
+)
+def export_telemetry_csv(n_clicks, difficulty, stage_value):
+    events, _deaths, _balance = load_data()
+    df = normalize_events(events)
+
+    if difficulty:
+        df = df[df["difficulty"] == difficulty]
+    if stage_value is not None and "stage_id" in df.columns:
+        df = df[df["stage_id"] == stage_value]
+
+    # Make timestamps easier to read in the exported file.
+    if "timestamp" in df.columns:
+        df = df.copy()
+        df["timestamp"] = df["timestamp"].astype(str)
+
+    diff_label = difficulty or "all"
+    stage_label = stage_value if stage_value is not None else "all"
+    filename = f"telemetry_export_{diff_label}_stage_{stage_label}.csv"
+
+    return dcc.send_data_frame(df.to_csv, filename, index=False)
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=8050)
