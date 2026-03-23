@@ -1,5 +1,5 @@
 import { BaseLevel } from "../BaseLevel.js";
-import { levelSixConfig } from "./configs/LevelSixConfig.js";
+import { levelSixConfig } from "./LevelSixConfig.js";
 
 export class LevelSix extends BaseLevel {
   constructor() {

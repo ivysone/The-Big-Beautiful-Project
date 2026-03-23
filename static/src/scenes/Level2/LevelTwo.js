@@ -1,6 +1,5 @@
-// scenes/LevelTwo.js
 import { BaseLevel } from "../BaseLevel.js";
-import { levelTwoConfig } from "./configs/LevelTwoConfig.js";
+import { levelTwoConfig } from "./LevelTwoConfig.js";
 
 export class LevelTwo extends BaseLevel {
   constructor() {

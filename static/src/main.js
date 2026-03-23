@@ -1,10 +1,10 @@
-import { LevelOne } from './scenes/Level1/LevelOne.js';
-import { LevelTwo } from './scenes/Level2/LevelTwo.js';
-import { LevelThree } from './scenes/LevelThree.js';
-import { LevelFour } from './scenes/LevelFour.js';
-import { LevelTen } from './scenes/Level10/LevelTen.js';
-import { LevelSix } from './scenes/Level6/LevelSix.js';
-import { LevelSeven } from './scenes/Level7/levelSeven.js';
+import { LevelOne } from "./scenes/Level1/LevelOne.js";
+import { LevelTen } from "./scenes/Level10/LevelTen.js";
+import { LevelTwo } from "./scenes/Level2/LevelTwo.js";
+import { LevelThree } from "./scenes/Level3/LevelThree.js";
+import { LevelFour } from "./scenes/Level4/LevelFour.js";
+import { LevelSix } from "./scenes/Level6/LevelSix.js";
+import { LevelSeven } from "./scenes/Level7/levelSeven.js";
 
 const config = {
     type: Phaser.AUTO,

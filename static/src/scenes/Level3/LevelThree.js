@@ -1,11 +1,11 @@
-import { BaseLevel } from "./BaseLevel.js";
-import { levelThreeConfig } from "./configs/LevelThreeConfig.js";
-import { OrcEnemy } from "../entities/enemies/OrcEnemy.js";
-import { SlimeEnemy } from "../entities/enemies/SlimeEnemy.js";
-import { DamnedEnemy } from "../entities/enemies/DamnedEnemy.js";
-import { BurningSkull } from "../entities/enemies/BurningSkull.js";
-import { EyeEnemy } from "../entities/enemies/EyeEnemy.js";
-import { BatEnemy } from "../entities/enemies/BatEnemy.js";
+import { BaseLevel } from "../BaseLevel.js";
+import { levelThreeConfig } from "./LevelThreeConfig.js";
+import { OrcEnemy } from "../../entities/enemies/OrcEnemy.js";
+import { SlimeEnemy } from "../../entities/enemies/SlimeEnemy.js";
+import { DamnedEnemy } from "../../entities/enemies/DamnedEnemy.js";
+import { BurningSkull } from "../../entities/enemies/BurningSkull.js";
+import { EyeEnemy } from "../../entities/enemies/EyeEnemy.js";
+import { BatEnemy } from "../../entities/enemies/BatEnemy.js";
 
 const DEFENSE_ENEMIES = {
   OrcEnemy,
