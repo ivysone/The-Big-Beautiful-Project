@@ -7,11 +7,9 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 
-# test_db
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "dashboard"))
-
-from db import get_db_path, query_df
+from dashboard.db import get_db_path, query_df
 
 
 class TestGetDbPath:
@@ -58,14 +56,14 @@ class TestQueryDf:
             pass
 
     def test_query_df_basic_select(self):
-        with patch("db.get_db_path", return_value=self.db_path):
+        with patch("dashboard.db.get_db_path", return_value=self.db_path):
             result = query_df("SELECT * FROM test_table")
             assert isinstance(result, pd.DataFrame)
             assert len(result) == 3
             assert list(result.columns) == ["id", "name", "value"]
 
     def test_query_df_with_parameters(self):
-        with patch("db.get_db_path", return_value=self.db_path):
+        with patch("dashboard.db.get_db_path", return_value=self.db_path):
             result = query_df(
                 "SELECT * FROM test_table WHERE name = ?",
                 params=("Alice",),
@@ -75,7 +73,7 @@ class TestQueryDf:
             assert result["value"].iloc[0] == 100
 
     def test_query_df_empty_result(self):
-        with patch("db.get_db_path", return_value=self.db_path):
+        with patch("dashboard.db.get_db_path", return_value=self.db_path):
             result = query_df("SELECT * FROM test_table WHERE value > 1000")
             assert isinstance(result, pd.DataFrame)
             assert len(result) == 0
