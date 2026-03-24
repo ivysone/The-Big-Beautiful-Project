@@ -2,6 +2,7 @@ import os
 import sys
 import sqlite3
 import tempfile
+from pathlib import Path
 from unittest.mock import patch
 
 import pandas as pd
@@ -16,7 +17,8 @@ class TestGetDbPath:
     def test_get_db_path_default(self):
         with patch.dict(os.environ, {}, clear=True):
             result = get_db_path()
-            assert result == "/data/game.db"
+            expected = str(Path(__file__).resolve().parent.parent.parent / "dashboard" / "game.db")
+            assert result == expected
 
     def test_get_db_path_from_environment(self):
         custom_path = "/custom/path/to/game.db"
