@@ -10,4 +10,4 @@ COPY . .
 ENV PORT=8080
 EXPOSE 8080
 
-CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["sh", "-c", "python -m dashboard.seed_dashboard_data --db-path /app/data/game.db && python -m uvicorn app.main:app --host 0.0.0.0 --port 8080"]

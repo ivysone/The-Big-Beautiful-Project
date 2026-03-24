@@ -1,7 +1,8 @@
 import sqlite3
 import os
+from .db import get_db_path
 
-DB_PATH = "/data/game.db"
+DB_PATH = get_db_path()
 
 def init_database():
     """Create the database structure if it doesn't exist"""

@@ -29,6 +29,13 @@ def normalize_events(events_df: pd.DataFrame) -> pd.DataFrame:
         ]:
             if col not in df.columns:
                 df[col] = pd.Series(dtype="object")
+
+        df["difficulty"] = (
+        df["difficulty"]
+        .replace({"medium": "balanced", "normal": "balanced"})
+        .fillna("balanced")
+        )
+
         return df
 
     # timestamp
@@ -129,7 +136,7 @@ def combat_by_stage(df: pd.DataFrame, difficulty: Optional[str] = None) -> pd.Da
     heal_amt = use[use["event_name"] == "heal_pickup"].groupby("stage_id")["heal_amount"].sum(min_count=1)
     kills = use[use["event_name"] == "enemy_kill"].groupby("stage_id").size()
     retries = use[use["event_name"] == "retry"].groupby("stage_id").size()
-    deaths = use[use["event_name"] == "death"].groupby("stage_id").size()
+    deaths = use[use["event_name"] == "fail"].groupby("stage_id").size()
 
     stages = sorted(use["stage_id"].dropna().astype(int).unique())
     out = pd.DataFrame({"stage_id": stages})
@@ -149,7 +156,7 @@ def fail_reasons(df: pd.DataFrame, difficulty: Optional[str] = None, stage_id: O
     use = _filter_difficulty(df, difficulty)
     if stage_id is not None:
         use = use[use["stage_id"] == stage_id]
-    deaths = use[use["event_name"] == "death"]
+    deaths = use[use["event_name"] == "fail"]
     if deaths.empty:
         return pd.DataFrame(columns=["cause", "count"])
     vc = deaths["fail_cause"].fillna("unknown").value_counts().reset_index()

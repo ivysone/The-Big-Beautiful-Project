@@ -2,8 +2,12 @@ import os
 import sqlite3
 import pandas as pd
 
+from pathlib import Path
+import os
+
 def get_db_path() -> str:
-    return os.environ.get("DB_PATH", "/data/game.db")
+    default_path = Path(__file__).resolve().parent / "game.db"
+    return os.environ.get("DB_PATH", str(default_path))
 
 
 def query_df(sql: str, params: tuple = ()) -> pd.DataFrame:

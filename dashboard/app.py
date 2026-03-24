@@ -26,12 +26,26 @@ from .balancing_toolkit import (
     compare_simulations,
     save_decision,
     init_balancing_tables,
+    generate_suggestions_from_sim
 )
+
+BALANCE_PARAM_SPECS = [
+    ("enemyHpMult", "Enemy Health", 0.70, 1.50, 0.05, DEFAULT_PARAMS["enemyHpMult"], "Higher = longer fights."),
+    ("enemyDamageMult", "Enemy Damage", 0.70, 1.50, 0.05, DEFAULT_PARAMS["enemyDamageMult"], "Higher = more incoming damage."),
+    ("playerDamageMult", "Player Damage", 0.70, 1.50, 0.05, DEFAULT_PARAMS["playerDamageMult"], "Higher = faster clears."),
+    ("playerIncomingDamageMult", "Incoming Damage Mult", 0.70, 1.50, 0.05, DEFAULT_PARAMS["playerIncomingDamageMult"], "Scales damage received."),
+    ("staminaRegenMult", "Stamina Regen", 0.70, 1.50, 0.05, DEFAULT_PARAMS["staminaRegenMult"], "Higher = more recovery."),
+    ("parryWindowMs", "Parry Window (ms)", 60, 240, 10, DEFAULT_PARAMS["parryWindowMs"], "Larger = easier timing."),
+    ("parryStunMs", "Parry Stun (ms)", 600, 1800, 50, DEFAULT_PARAMS["parryStunMs"], "Larger = bigger reward."),
+    ("checkpointSpacing", "Checkpoint Spacing", 0.70, 1.50, 0.05, DEFAULT_PARAMS["checkpointSpacing"], "Lower = more frequent checkpoints."),
+    ("rewardCoinsMult", "Reward Coins", 0.70, 1.60, 0.05, DEFAULT_PARAMS["rewardCoinsMult"], "Higher = faster economy."),
+]
 
 
 # Dash App Setup
 app = Dash(__name__, requests_pathname_prefix="/admin/")
 app.title = "Telemetry Dashboard (Admin)"
+init_balancing_tables()
 
 # Data Helpers
 def load_data():
@@ -41,8 +55,19 @@ def load_data():
     return events, deaths, balance
 
 def difficulty_options(df_norm):
-    opts = sorted([x for x in df_norm["difficulty"].dropna().unique().tolist()])
-    return [{"label": d, "value": d} for d in (opts if opts else ["easy","medium","hard"])]
+    if df_norm is None or df_norm.empty or "difficulty" not in df_norm.columns:
+        opts = ["easy", "balanced", "hard"]
+    else:
+        opts = sorted(
+            df_norm["difficulty"]
+            .replace({"medium": "balanced", "normal": "balanced"})
+            .dropna()
+            .unique()
+            .tolist()
+        )
+        if not opts:
+            opts = ["easy", "balanced", "hard"]
+    return [{"label": d.title(), "value": d} for d in opts]
 
 def card(title: str, value: str, subtitle: str | None = None):
     """Reusable KPI card component for Overview and toolkit output."""
@@ -70,6 +95,7 @@ def empty_figure(title: str):
 # Dashboard Layout
 app.layout = html.Div([
     html.H2("📊 Telemetry Analytics Dashboard"),
+    dcc.Interval(id="decision-log-init", interval=500, n_intervals=0, max_intervals=1),
     # Common Dropdown Menu
     html.Div([
         # Difficulty Dropdown
@@ -152,49 +178,21 @@ app.layout = html.Div([
                 html.Div([
                     html.H4("Parameters (Proposed)"),
                     html.Div([
-                        html.Label("Enemy Health"),
-                        dcc.Slider(
-                            id="p-enemyHpMult",
-                            min=0.7, max=1.5, step=0.05,
-                            value=DEFAULT_PARAMS["enemyHpMult"],
-                            tooltip={"placement": "bottom", "always_visible": False},
-                        ),
-                        html.Small("Higher = longer fights. Increases time-to-kill (TTK).", style={"color": "#666"}),
-                    ], style={"marginBottom": "14px"}),
-
-                    html.Div([
-                        html.Label("Enemy Damage"),
-                        dcc.Slider(
-                            id="p-enemyDamageMult",
-                            min=0.7, max=1.5, step=0.05,
-                            value=DEFAULT_PARAMS["enemyDamageMult"],
-                            tooltip={"placement": "bottom", "always_visible": False},
-                        ),
-                        html.Small("Higher = more damage taken during TTK. Increases fail probability.", style={"color": "#666"}),
-                    ], style={"marginBottom": "14px"}),
-
-                    html.Div([
-                        html.Label("Player Damage Output"),
-                        dcc.Slider(
-                            id="p-playerDamageMult",
-                            min=0.7, max=1.5, step=0.05,
-                            value=DEFAULT_PARAMS["playerDamageMult"],
-                            tooltip={"placement": "bottom", "always_visible": False},
-                        ),
-                        html.Small("Higher = shorter fights. Reduces exposure time to damage.", style={"color": "#666"}),
+                        html.Div([
+                            html.Label(label),
+                            dcc.Slider(
+                                id=f"p-{key}",
+                                min=min_v,
+                                max=max_v,
+                                step=step,
+                                value=default,
+                                tooltip={"placement": "bottom", "always_visible": False},
+                            ),
+                            html.Small(help_text, style={"color": "#666"}),
+                        ], style={"marginBottom": "14px"})
+                        for key, label, min_v, max_v, step, default, help_text in BALANCE_PARAM_SPECS
                     ]),
-
-                    html.Hr(),
-
-                    html.Div([
-                        dcc.Input(id="sim-seed", type="number", value=123, style={"width": "120px"}),
-                        html.Span("Seed", style={"marginLeft": "8px", "marginRight": "14px"}),
-                        html.Button("Run Full Simulation (500)", id="run-sim-btn", n_clicks=0),
-                    ], style={"display": "flex", "alignItems": "center", "gap": "10px"}),
-
-                    html.Div(id="sim-mode-badge", style={"marginTop": "10px", "color": "#666"}),
-                ], style={"flex": "1", "minWidth": "340px", "border": "1px solid #ddd", "borderRadius": "12px", "padding": "14px"}),
-
+                ], style={"flex": "1", "minWidth": "320px"}),
                 html.Div([
                     html.H4("Predicted Impact (Baseline vs Proposed)"),
                     html.Div(id="kpi-deltas", style={
@@ -234,10 +232,18 @@ app.layout = html.Div([
                 html.Span("", id="save-decision-status", style={"marginLeft":"10px"})
             ], style={"marginTop":"10px","marginBottom":"10px"}),
 
-            dcc.Graph(id="decision-log-table"),
+            html.Div(
+                id="decision-log-table",
+                style={
+                    "maxHeight": "300px",
+                    "overflowY": "auto",
+                    "border": "1px solid #ddd",
+                    "borderRadius": "10px",
+                    "padding": "10px",
+                    "background": "white"
+                }
+            )
         ])
-
-
     ])
 ], style={"padding": "16px", "background": "#fafafa"})
 
@@ -253,21 +259,18 @@ app.layout = html.Div([
 )
 def init_dropdowns(_):
     events, deaths, _balance = load_data()
+    df = normalize_events(events)
 
-    # difficulty options
-    if events is None or events.empty:
-        diff_opts = [{"label": d, "value": d} for d in ["easy","medium","hard"]]
+    diff_opts = difficulty_options(df)
+
+    if df is None or df.empty or "stage_id" not in df.columns:
+        stage_values = list(range(1, 11))
     else:
-        df = normalize_events(events)
-        diff_opts = difficulty_options(df)
+        stage_values = sorted(df["stage_id"].dropna().astype(int).unique().tolist())
+        if not stage_values:
+            stage_values = list(range(1, 11))
 
-    # stage options
-    if deaths is None or deaths.empty or "stage_number" not in deaths.columns:
-        stages = list(range(1, 11))
-    else:
-        stages = sorted(pd.to_numeric(deaths["stage_number"], errors="coerce").dropna().astype(int).unique().tolist())
-
-    stage_opts = [{"label": f"Stage {s}", "value": s} for s in stages]
+    stage_opts = [{"label": f"Stage {s}", "value": s} for s in stage_values]
     return diff_opts, stage_opts
 
 # ==============================================================================
@@ -335,11 +338,6 @@ def update_dashboard(difficulty, stage_value):
     else:
         fig_funnel = empty_figure("Stage Funnel Counts - no data")
         fig_rates = empty_figure("Stage Rates - no data")
-
-    fig_rates = px.line(
-        funnel, x="stage_id", y=["completion_rate", "fail_rate", "dropoff_rate"],
-        title="Stage Rates"
-    )
 
     # Progression Curve
     if len(durations):
@@ -523,106 +521,141 @@ def update_dashboard(difficulty, stage_value):
 
 # Balancing Toolkit Callbacks
 @app.callback(
-    Output("sim-mode-badge", "children"),
     Output("kpi-deltas", "children"),
     Output("rules-box", "children"),
-    Output("sim-reach-curve", "figure"),  
-    Output("sim-fail-by-stage", "figure"),    
-    Output("sim-time-by-stage", "figure"),   
-    Input("run-sim-btn", "n_clicks"),
+    Output("sim-reach-curve", "figure"),
+    Output("sim-fail-by-stage", "figure"),
+    Output("sim-time-by-stage", "figure"),
     Input("p-enemyHpMult", "value"),
     Input("p-enemyDamageMult", "value"),
     Input("p-playerDamageMult", "value"),
+    Input("p-playerIncomingDamageMult", "value"),
+    Input("p-staminaRegenMult", "value"),
+    Input("p-parryWindowMs", "value"),
+    Input("p-parryStunMs", "value"),
+    Input("p-checkpointSpacing", "value"),
+    Input("p-rewardCoinsMult", "value"),
     Input("difficulty-dd", "value"),
-    State("sim-seed", "value"),
+    Input("stage-dd", "value"),
 )
-def toolkit_update(n_clicks, enemyHpMult, enemyDamageMult, playerDamageMult, difficulty, seed):
+def toolkit_update(
+    enemyHpMult,
+    enemyDamageMult,
+    playerDamageMult,
+    playerIncomingDamageMult,
+    staminaRegenMult,
+    parryWindowMs,
+    parryStunMs,
+    checkpointSpacing,
+    rewardCoinsMult,
+    difficulty,
+    stage_id,
+):
     events, deaths, balance = load_data()
     df = normalize_events(events)
 
     funnel = funnel_by_stage(df, difficulty=difficulty)
     tdf = time_by_stage(df, difficulty=difficulty)
 
+    empty_fig = px.scatter(title="No telemetry data for this filter.")
+    empty_fig.update_layout(
+        xaxis={"visible": False},
+        yaxis={"visible": False},
+        annotations=[{
+            "text": "No telemetry data available for current filters.",
+            "xref": "paper",
+            "yref": "paper",
+            "showarrow": False,
+            "font": {"size": 16}
+        }]
+    )
+
     if funnel is None or funnel.empty:
-        empty_fig = px.scatter(title="No telemetry data for this filter (try another difficulty).")
         return (
-            "Preview (no data)",
-            [],
-            html.Div("No telemetry data available for current filters."),
+            [html.Div("No KPI preview available.", style={"padding": "10px"})],
+            html.Div("No rules triggered because there is no telemetry data for the selected filter."),
             empty_fig,
             empty_fig,
             empty_fig,
         )
 
-
     proposed_params = {
         "enemyHpMult": enemyHpMult,
         "enemyDamageMult": enemyDamageMult,
         "playerDamageMult": playerDamageMult,
+        "playerIncomingDamageMult": playerIncomingDamageMult,
+        "staminaRegenMult": staminaRegenMult,
+        "parryWindowMs": parryWindowMs,
+        "parryStunMs": parryStunMs,
+        "checkpointSpacing": checkpointSpacing,
+        "rewardCoinsMult": rewardCoinsMult,
     }
 
-    # --- RULES (telemetry driven) ---
-    suggestions = generate_suggestions(funnel, tdf)
-    if suggestions:
-        rules_ui = html.Ul([
-            html.Li([
-                html.B(f"{s.rule_id} ({s.severity}) "),
-                html.Span(s.message),
-                html.Code("  " + json.dumps(s.suggested_changes))
-            ]) for s in suggestions
-        ])
-    else:
-        rules_ui = html.Div("No rules triggered for current telemetry filters.")
-
-    # --- PREVIEW vs FULL ---
-    triggered = getattr(dash.callback_context, "triggered_id", None)
-    full_run = (triggered == "run-sim-btn" and (n_clicks or 0) > 0)
-
-    n_runs = 800 if full_run else 200
-    badge = ("Full simulation (800 runs)" if full_run else "Preview (200 runs)")
+    baseline_suggestions = generate_suggestions(funnel, tdf)
+    n_runs = 300
 
     frames = compare_simulations(
         funnel=funnel,
         tdf=tdf,
         proposed_params=proposed_params,
         n_runs=n_runs,
-        seed=int(seed or 123),
-        stage_id=None,      # or set a specific stage id
+        seed=123,
+        stage_id=stage_id,
         n_enemies=15,
     )
 
-    # --- KPI delta cards ---
+    live_suggestions = generate_suggestions_from_sim(
+        frames["stage_fail"],
+        frames["stage_time"],
+        frames["reach_curve"],
+    )
+
+    if live_suggestions:
+        rules_ui = html.Div([
+            html.Div("Live suggestions based on current proposed sliders:", style={"fontWeight": "600", "marginBottom": "8px"}),
+            html.Ul([
+                html.Li([
+                    html.B(f"{s.rule_id} ({s.severity}) "),
+                    html.Span(s.message),
+                    html.Code("  " + json.dumps(s.suggested_changes))
+                ])
+                for s in live_suggestions
+            ])
+        ])
+    else:
+        rules_ui = html.Div("No rule suggestions are currently triggered by the proposed settings.")
+
     kpi_df = frames["kpis"]
     kpi_cards = []
+
     for _, row in kpi_df.iterrows():
         metric = row["metric"]
         baseline = float(row["baseline"])
         proposed = float(row["proposed"])
         delta = float(row["delta"])
 
-        # formatting
         if "rate" in metric.lower():
             btxt = f"{baseline:.1%}"
             ptxt = f"{proposed:.1%}"
             dtxt = f"{delta:+.1%}"
         else:
-            btxt = f"{baseline:,.2f}" if "Avg" in metric else f"{baseline:,.0f}"
-            ptxt = f"{proposed:,.2f}" if "Avg" in metric else f"{proposed:,.0f}"
-            dtxt = f"{delta:+,.2f}" if "Avg" in metric else f"{delta:+,.0f}"
+            btxt = f"{baseline:,.2f}" if "avg" in metric.lower() else f"{baseline:,.0f}"
+            ptxt = f"{proposed:,.2f}" if "avg" in metric.lower() else f"{proposed:,.0f}"
+            dtxt = f"{delta:+,.2f}" if "avg" in metric.lower() else f"{delta:+,.0f}"
 
         kpi_cards.append(
             html.Div([
                 html.Div(metric, style={"fontWeight": "600"}),
                 html.Div(f"{btxt} → {ptxt}", style={"fontSize": "18px"}),
                 html.Div(dtxt, style={"color": "#333"}),
-            ], style={"border": "1px solid #ddd", "borderRadius": "12px", "padding": "10px"})
+            ], style={
+                "border": "1px solid #ddd",
+                "borderRadius": "12px",
+                "padding": "10px"
+            })
         )
 
-    # --- FIGURE 1: Distribution plot (repurposes sim-reach-curve) ---
-    # Show how tuning changes the distribution of fails_total (very convincing for retries)
     dist = frames["dist"].copy()
-
-    # Histogram of fails per run (shows retries)
     fig_dist = px.histogram(
         dist,
         x="fails_total",
@@ -633,7 +666,6 @@ def toolkit_update(n_clicks, enemyHpMult, enemyDamageMult, playerDamageMult, dif
     )
     fig_dist.update_layout(xaxis_title="Fails per run", yaxis_title="Count")
 
-    # --- FIGURE 2: Fail chance per attempt (bar compare) ---
     stage_fail = frames["stage_fail"]
     fig_fail = px.bar(
         stage_fail,
@@ -644,7 +676,6 @@ def toolkit_update(n_clicks, enemyHpMult, enemyDamageMult, playerDamageMult, dif
     fig_fail.update_yaxes(range=[0, 1])
     fig_fail.update_layout(yaxis_tickformat=".0%")
 
-    # --- FIGURE 3: Median run time (bar compare) ---
     stage_time = frames["stage_time"]
     fig_time = px.bar(
         stage_time,
@@ -653,8 +684,7 @@ def toolkit_update(n_clicks, enemyHpMult, enemyDamageMult, playerDamageMult, dif
         title="Predicted median run time (ms)"
     )
 
-    return badge, kpi_cards, rules_ui, fig_dist, fig_fail, fig_time
-
+    return kpi_cards, rules_ui, fig_dist, fig_fail, fig_time
 
 @app.callback(
     Output("save-decision-status", "children"),
@@ -663,17 +693,41 @@ def toolkit_update(n_clicks, enemyHpMult, enemyDamageMult, playerDamageMult, dif
     State("decision-stage", "value"),
     State("decision-difficulty", "value"),
     State("decision-rationale", "value"),
-    # params
     State("p-enemyHpMult", "value"),
     State("p-enemyDamageMult", "value"),
     State("p-playerDamageMult", "value"),
+    State("p-playerIncomingDamageMult", "value"),
+    State("p-staminaRegenMult", "value"),
+    State("p-parryWindowMs", "value"),
+    State("p-parryStunMs", "value"),
+    State("p-checkpointSpacing", "value"),
+    State("p-rewardCoinsMult", "value"),
     prevent_initial_call=True
 )
-def save_decision_cb(n_clicks, designer, stage_id, difficulty, rationale,
-                     enemyHpMult, enemyDamageMult, playerDamageMult):
-    # compute evidence snapshot from current telemetry filters
+def save_decision_cb(
+    n_clicks,
+    designer,
+    stage_id,
+    difficulty,
+    rationale,
+    enemyHpMult,
+    enemyDamageMult,
+    playerDamageMult,
+    playerIncomingDamageMult,
+    staminaRegenMult,
+    parryWindowMs,
+    parryStunMs,
+    checkpointSpacing,
+    rewardCoinsMult,
+):
+    if not rationale or not rationale.strip():
+        return "Please enter a rationale before saving."
+
+    init_balancing_tables()
+
     events, deaths, balance = load_data()
     df = normalize_events(events)
+
     funnel = funnel_by_stage(df, difficulty=difficulty)
     tdf = time_by_stage(df, difficulty=difficulty)
     suggestions = generate_suggestions(funnel, tdf)
@@ -682,46 +736,97 @@ def save_decision_cb(n_clicks, designer, stage_id, difficulty, rationale,
         "enemyHpMult": enemyHpMult,
         "enemyDamageMult": enemyDamageMult,
         "playerDamageMult": playerDamageMult,
+        "playerIncomingDamageMult": playerIncomingDamageMult,
+        "staminaRegenMult": staminaRegenMult,
+        "parryWindowMs": parryWindowMs,
+        "parryStunMs": parryStunMs,
+        "checkpointSpacing": checkpointSpacing,
+        "rewardCoinsMult": rewardCoinsMult,
     }
-
 
     evidence = {
         "difficulty_filter": difficulty,
-        "funnel_rows": int(len(funnel)),
-        "time_rows": int(len(tdf)),
-        "funnel_head": funnel.head(10).to_dict(orient="records"),
-        "time_head": tdf.head(10).to_dict(orient="records"),
+        "stage_filter": stage_id,
+        "funnel_rows": int(len(funnel)) if funnel is not None else 0,
+        "time_rows": int(len(tdf)) if tdf is not None else 0,
+        "funnel_head": funnel.head(10).to_dict(orient="records") if funnel is not None and not funnel.empty else [],
+        "time_head": tdf.head(10).to_dict(orient="records") if tdf is not None and not tdf.empty else [],
+        "triggered_rules": [
+            {
+                "rule_id": s.rule_id,
+                "severity": s.severity,
+                "message": s.message,
+                "suggested_changes": s.suggested_changes,
+            }
+            for s in suggestions
+        ],
     }
 
-    if not rationale or not rationale.strip():
-        return "Please enter a rationale before saving."
-
-    init_balancing_tables()
     decision_id = save_decision(
         ts_iso=datetime.utcnow().isoformat(),
         designer=designer or "designer",
         stage_id=int(stage_id) if stage_id not in (None, "") else None,
-        difficulty=difficulty,
+        difficulty=difficulty or None,
         changes=changes,
         rules=suggestions,
         evidence=evidence,
-        rationale=rationale.strip()
+        rationale=rationale.strip(),
     )
+
     return f"Saved ✅ {decision_id[:8]}"
 
 @app.callback(
-    Output("decision-log-table", "figure"),
+    Output("decision-log-table", "children"),
+    Input("decision-log-init", "n_intervals"),
     Input("save-decision-btn", "n_clicks"),
 )
-def refresh_decision_log(_):
+def refresh_decision_log(_, __):
     init_balancing_tables()
-    df = query_df("SELECT ts_iso, designer, stage_id, difficulty, changes_json, rationale_text FROM balance_decisions ORDER BY ts_iso DESC LIMIT 50")
-    if not len(df):
-        return px.scatter(title="No decisions saved yet.")
-    # show as a simple bar/table-like chart (Dash DataTable is also fine, but you already use figures)
-    df["changes_json"] = df["changes_json"].apply(lambda s: (s or "")[:120] + ("..." if s and len(s) > 120 else ""))
-    return px.scatter(df, x="ts_iso", y="designer", hover_data=["stage_id","difficulty","changes_json","rationale_text"],
-                      title="Decision Log (hover for details)")
+
+    df = query_df("""
+        SELECT *
+        FROM balance_decisions
+        ORDER BY ts_iso DESC
+        LIMIT 30
+    """)
+
+    if df.empty:
+        return html.Div("No decisions recorded yet.")
+
+    items = []
+
+    for _, row in df.iterrows():
+        timestamp = row.get("ts_iso", "")
+        designer = row.get("designer", "designer")
+        stage_id = row.get("stage_id", "All")
+        difficulty = row.get("difficulty", "All")
+        rationale = row.get("rationale_text", "")
+
+        changes_raw = row.get("changes_json", "{}")
+        try:
+            changes = json.loads(changes_raw) if isinstance(changes_raw, str) else changes_raw
+        except Exception:
+            changes = {}
+
+        if isinstance(changes, dict) and changes:
+            change_text = ", ".join(f"{k}={v}" for k, v in changes.items())
+        else:
+            change_text = "No changes recorded"
+
+        items.append(
+            html.Div([
+                html.B(f"{timestamp} — {designer}"),
+                html.Div(f"Stage: {stage_id if pd.notna(stage_id) else 'All'} | Difficulty: {difficulty or 'All'}"),
+                html.Div(f"Changes: {change_text}"),
+                html.Div(
+                    f"Rationale: {rationale}",
+                    style={"fontStyle": "italic", "marginTop": "4px"}
+                ),
+                html.Hr(),
+            ], style={"padding": "6px 0"})
+        )
+
+    return html.Div(items)
 
 # Export Callback
 @app.callback(

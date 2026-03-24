@@ -72,6 +72,10 @@ def clear_tables(conn: sqlite3.Connection) -> None:
 
 
 def insert_game_balance_defaults(conn: sqlite3.Connection, ts: str) -> None:
+    exists = conn.execute("SELECT 1 FROM game_balance LIMIT 1").fetchone()
+    if exists:
+        return
+
     defaults = [
         ("enemyHpMult", 1.0, ts),
         ("enemyDamageMult", 1.0, ts),
@@ -106,6 +110,12 @@ def add_event(
 
     if event_type == "death" and event_data.get("x_position") is not None and event_data.get("y_position") is not None:
         conn.execute(
+            """
+            INSERT INTO death_heatmap(
+                user_id, session_id, stage_number, x_position, y_position, timestamp
+            )
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
             (
                 user_id,
                 session_id,
@@ -115,6 +125,17 @@ def add_event(
                 iso(timestamp),
             ),
         )
+
+
+def get_existing_session_counts(conn: sqlite3.Connection) -> Dict[int, int]:
+    rows = conn.execute(
+        """
+        SELECT user_id, COUNT(DISTINCT session_id)
+        FROM telemetry_events
+        GROUP BY user_id
+        """
+    ).fetchall()
+    return {int(user_id): int(count) for user_id, count in rows}
 
 
 def player_profiles(num_users: int, min_sessions_per_user: int, extra_sessions: int, rng: random.Random) -> List[PlayerProfile]:
@@ -137,7 +158,6 @@ def player_profiles(num_users: int, min_sessions_per_user: int, extra_sessions: 
 
 
 def stage_positions(stage: int, rng: random.Random, death_zone: bool = False) -> Tuple[float, float]:
-    # Fixed-ish clusters so the heatmap looks intentional rather than uniform.
     clusters = {
         1: [(20, 30), (60, 50), (80, 25)],
         2: [(18, 70), (42, 40), (74, 58)],
@@ -146,6 +166,7 @@ def stage_positions(stage: int, rng: random.Random, death_zone: bool = False) ->
         5: [(26, 28), (52, 72), (85, 45)],
         6: [(20, 20), (48, 52), (76, 80)],
     }
+
     hot_clusters = {
         1: (60, 50),
         2: (42, 40),
@@ -154,19 +175,25 @@ def stage_positions(stage: int, rng: random.Random, death_zone: bool = False) ->
         5: (52, 72),
         6: (48, 52),
     }
+
     if death_zone:
         cx, cy = hot_clusters[stage]
         spread = 7
     else:
         cx, cy = rng.choice(clusters[stage])
         spread = 11
-    x = max(0.0, min(100.0, rng.gauss(cx, spread)))
-    y = max(0.0, min(100.0, rng.gauss(cy, spread)))
-    return round(x, 2), round(y, 2)
 
+    # original 0–100 space
+    x_norm = max(0.0, min(100.0, rng.gauss(cx, spread)))
+    y_norm = max(0.0, min(100.0, rng.gauss(cy, spread)))
+
+    # scale to your actual resolution
+    x = round((x_norm / 100.0) * 1800, 2)
+    y = round((y_norm / 100.0) * 1500, 2)
+
+    return x, y
 
 def choose_difficulty(profile: PlayerProfile, rng: random.Random) -> str:
-    # Better players tend to choose harder modes more often.
     if profile.skill > 1.15:
         weights = [0.2, 0.45, 0.35]
     elif profile.skill < 0.9:
@@ -211,13 +238,11 @@ def attempt_stage(
 
     emit("stage_start", {})
 
-    # Optional dialogue at start of selected stages.
     if stage in (1, 3, 6) and rng.random() < 0.55:
         dlg = rng.choice(DIALOGUES)
         emit("dialogue_start", {"dialogue_id": dlg})
         emit("dialogue_end", {"dialogue_id": dlg, "duration_ms": int(rng.uniform(1800, 6500))})
 
-    # Spawn several enemies and pickups.
     enemy_waves = max(2, min(6, int(rng.gauss(2.2 + stage * 0.5 + diff_mult, 0.8))))
     pickup_spawns = max(0, min(3, int(rng.gauss(1.1 + (1.2 - diff_mult), 0.7))))
 
@@ -231,7 +256,6 @@ def attempt_stage(
         x, y = stage_positions(stage, rng)
         emit("pickup_spawn", {"item_type": item_type, "x_position": x, "y_position": y})
 
-    # Combat loop.
     player_hits = max(1, int(rng.gauss(2.5 + stage * 1.2 + (diff_mult - 0.85) * 4, 1.6)))
     if profile.caution > 1.1:
         player_hits -= 1
@@ -241,7 +265,6 @@ def attempt_stage(
     enemy_kills = max(1, int(rng.gauss(enemy_waves * (0.9 + 0.12 * profile.skill), 1.2)))
     heal_pickups = max(0, int(rng.gauss((danger - 0.65) * 2.6 + profile.caution * 0.8, 1.0)))
 
-    # Emit hits and parries in mixed order.
     combat_events: List[Tuple[str, Dict]] = []
     for _ in range(player_hits):
         enemy = rng.choices(ENEMIES, weights=[3, 3, 2, 1.5, 0.8], k=1)[0]
@@ -270,7 +293,6 @@ def attempt_stage(
         amount = rng.choice([15, 20, 25, 30, 40])
         emit("heal_pickup", {"extra": {"amount": amount, "source": rng.choice(["pickup", "item", "skill"]), "heal_amount": amount}})
 
-    # Outcome model: later stages + hard mode tend to fail more often.
     fail_prob = 0.11 + max(0, danger - 0.92) * 0.46
     fail_prob -= (profile.caution - 1.0) * 0.06
     fail_prob = min(0.78, max(0.03, fail_prob))
@@ -323,7 +345,7 @@ def seed_database(
     min_sessions: int = 2,
     total_sessions: int = 88,
     seed: int = 42,
-    clear_existing: bool = True,
+    clear_existing: bool = False,
 ) -> Dict[str, int]:
     rng = random.Random(seed)
     path = Path(db_path)
@@ -331,9 +353,12 @@ def seed_database(
 
     conn = sqlite3.connect(str(path))
     ensure_tables(conn)
+
     if clear_existing:
         clear_tables(conn)
+
     insert_game_balance_defaults(conn, iso(datetime.now(timezone.utc)))
+    existing_sessions = get_existing_session_counts(conn)
 
     extra_sessions = max(0, total_sessions - users * min_sessions)
     profiles = player_profiles(users, min_sessions, extra_sessions, rng)
@@ -344,12 +369,14 @@ def seed_database(
     total_attempts = 0
 
     for profile in profiles:
+        start_offset = existing_sessions.get(profile.user_id, 0)
+
         for s in range(profile.sessions):
-            session_id = f"sess_u{profile.user_id:03d}_{s+1:02d}"
+            session_number = start_offset + s + 1
+            session_id = f"sess_u{profile.user_id:03d}_{session_number:02d}"
             difficulty = choose_difficulty(profile, rng)
             session_dt = base_dt + timedelta(hours=3 * total_attempts + rng.uniform(0, 2.5))
 
-            # Later sessions tend to reach later stages.
             furthest_stage = min(6, max(2, int(rng.gauss(2.5 + profile.skill * 1.5 + s * 0.45, 1.1))))
             current_stage = 1
             retry_counts: Dict[int, int] = {}
@@ -369,6 +396,7 @@ def seed_database(
                 )
                 total_events += events_added
                 total_attempts += 1
+
                 if not success:
                     total_deaths += 1
                     retry_counts[current_stage] += 1
@@ -411,7 +439,7 @@ def seed_database(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Seed realistic synthetic telemetry into the dashboard SQLite DB.")
-    parser.add_argument("--db-path", default="game.db", help="Path to the SQLite database file.")
+    parser.add_argument("--db-path", default="./data/game.db", help="Path to the SQLite database file.")
     parser.add_argument("--users", type=int, default=40, help="Number of pseudonymous users.")
     parser.add_argument("--sessions", type=int, default=88, help="Total number of sessions to seed.")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility.")
@@ -423,7 +451,7 @@ if __name__ == "__main__":
         users=max(40, args.users),
         total_sessions=max(80, args.sessions),
         seed=args.seed,
-        clear_existing=not args.keep_existing,
+        clear_existing=False,
     )
 
     print("Seed complete")
