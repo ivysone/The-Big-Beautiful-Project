@@ -74,7 +74,8 @@ export class OrcEnemy extends Phaser.Physics.Matter.Sprite {
 
     // Facing 
     this.facing = 1;
-    this.setScale(1, 1);
+    this.baseScale = 1;
+    this.setScale(this.baseScale, this.baseScale);
 
     // Pathfinding state
     this.path = null;
@@ -299,10 +300,10 @@ export class OrcEnemy extends Phaser.Physics.Matter.Sprite {
     // face target
     if (dx < 0) {
       this.facing = -1;
-      this.setScale(1, 1);
+      this.setScale(this.baseScale, this.baseScale);
     } else {
       this.facing = 1;
-      this.setScale(-1, 1);
+      this.setScale(-this.baseScale, this.baseScale);
     }
 
     // If currently attacking, do nothing
@@ -357,7 +358,10 @@ export class OrcEnemy extends Phaser.Physics.Matter.Sprite {
 
       // set facing to match motion
       this.facing = dir;
-      this.setScale(dir === 1 ? -1 : 1, 1);
+      this.setScale(
+        dir === 1 ? -this.baseScale : this.baseScale,
+        this.baseScale
+      );
 
       this.setVelocityX(dir * this.walkSpeed);
 
