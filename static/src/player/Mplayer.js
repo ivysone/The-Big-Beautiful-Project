@@ -50,8 +50,8 @@ export class Mplayer extends Phaser.Physics.Matter.Sprite {
 
     this.maxSt = 30;
     this.st = 30;
-    this.stRegenPerSec = 5;
-    this.stRegenDelayMs = 500;
+    this.stRegenPerSec = 10;
+    this.stRegenDelayMs = 300;
     this.lastStSpendTime = -Infinity;
 
     this.isDead = false;
@@ -65,8 +65,8 @@ export class Mplayer extends Phaser.Physics.Matter.Sprite {
     this.parryLockMs = 250;
 
     this.blockDamageMult = 0.25;
-    this.blockStaminaCost = 15;
-    this.parryStaminaCost = 10;
+    this.blockStaminaCost = 10;
+    this.parryStaminaCost = 3;
     this.blockCooldownMs = 250;
     this.lastBlockEnd = -Infinity;
 
