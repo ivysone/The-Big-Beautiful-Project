@@ -3,8 +3,11 @@ import { LevelTen } from "./scenes/Level10/LevelTen.js";
 import { LevelTwo } from "./scenes/Level2/LevelTwo.js";
 import { LevelThree } from "./scenes/Level3/LevelThree.js";
 import { LevelFour } from "./scenes/Level4/LevelFour.js";
+import { LevelFive } from "./scenes/Level5/LevelFive.js";
 import { LevelSix } from "./scenes/Level6/LevelSix.js";
 import { LevelSeven } from "./scenes/Level7/LevelSeven.js";
+import { LevelEight } from "./scenes/Level8/LevelEight.js";
+import { levelNine } from "./scenes/Level9/LevelNine.js";
 import { LevelSelectScene } from "./scenes/LevelSelect.js";
 
 const config = {
@@ -22,8 +25,11 @@ const config = {
         LevelTwo,
         LevelThree,
         LevelFour,
+        LevelFive,
         LevelSix,
         LevelSeven,
+        LevelEight,
+        levelNine,
         LevelTen
     ],
     scale: {

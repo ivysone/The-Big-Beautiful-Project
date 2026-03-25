@@ -20,6 +20,7 @@ import { RatEnemy } from "../entities/enemies/RatEnemy.js";
 import { PlantEnemy } from "../entities/enemies/PlantEnemy.js";
 import { BurningSkull } from "../entities/enemies/BurningSkull.js";
 import { MushroomEnemy } from "../entities/enemies/MushroomEnemy.js";
+import { MiniBossOrc } from "../entities/enemies/MiniBossOrc.js";
 
 
 const DEFAULT_HUD_KEYS = {
@@ -41,6 +42,7 @@ const ENEMY_REGISTRY = {
   PlantEnemy,
   BurningSkull,
   MushroomEnemy,
+  MiniBossOrc
 };
 
 const NPC_REGISTRY = {
@@ -353,13 +355,15 @@ export class BaseLevel extends Phaser.Scene {
     this.createHeartAnimation();
 
     this.setupMatterCollisions();
-    this.setupCameras(groundLayer);
     this.setupHUD();
     this.setupDebugText();
 
     if (this.levelConfig.autoSpawnEnemies) {
       this.spawnEnemies();
     }
+
+
+    this.setupCameras(groundLayer);
 
     this.playIntroCutscene();
 
@@ -455,28 +459,54 @@ export class BaseLevel extends Phaser.Scene {
 
   buildGroundCollision(layer) {
     layer.setCollisionByProperty({ collides: true });
-    this.matter.world.convertTilemapLayer(layer);
+    this.safeConvertCollisionLayer(layer, "ground");
+  }
 
+  buildExtraCollisionLayers(layers = []) {
+    for (const layer of layers) {
+      layer.setCollisionByProperty({ collides: true });
+      this.safeConvertCollisionLayer(layer, layer.layer?.name || "collision");
+    }
+  }
+
+  safeConvertCollisionLayer(layer, label = "layer") {
+    try {
+      // Keep your normal fast path
+      this.matter.world.convertTilemapLayer(layer);
+    } catch (err) {
+      console.warn(`[${label}] convertTilemapLayer failed, falling back to per-tile conversion`, err);
+
+      const collidingTiles = layer.getTilesWithin(
+        0,
+        0,
+        layer.width,
+        layer.height,
+        { isColliding: true }
+      );
+
+      for (const tile of collidingTiles) {
+        try {
+          this.matter.world.convertTiles([tile]);
+        } catch (tileErr) {
+          console.warn(`[${label}] skipping bad tile`, {
+            x: tile.x,
+            y: tile.y,
+            index: tile.index,
+            flipX: tile.flipX,
+            flipY: tile.flipY,
+            rotation: tile.rotation,
+            properties: tile.properties
+          });
+          tile.setCollision(false, false, false, false, false);
+        }
+      }
+    }
     layer.forEachTile((tile) => {
       const body = tile.physics?.matterBody?.body;
       if (body) {
         body.collisionFilter.category = CATS.WORLD;
       }
     });
-  }
-
-  buildExtraCollisionLayers(layers = []) {
-    for (const layer of layers) {
-      layer.setCollisionByProperty({ collides: true });
-      this.matter.world.convertTilemapLayer(layer);
-
-      layer.forEachTile((tile) => {
-        const body = tile.physics?.matterBody?.body;
-        if (body) {
-          body.collisionFilter.category = CATS.WORLD;
-        }
-      });
-    }
   }
 
   buildDamageTiles(layer) {
@@ -623,10 +653,10 @@ export class BaseLevel extends Phaser.Scene {
       ...(this.extraCollisionLayers || []),
       ...(this.damageLayer ? [this.damageLayer] : []),
       this.player,
-      this.extraEnemies,
-      this.npcs,
-      this.enemies,
-    ].filter(Boolean);
+      ...(this.extraEnemies || []),
+      ...(this.npcs || []),
+      ...(this.enemies || [])
+    ];
 
     this.uiCam.ignore(ignored);
 
@@ -775,14 +805,30 @@ export class BaseLevel extends Phaser.Scene {
   }
 
   handleDeathZone(objA, bodyA, objB, bodyB) {
+    // Player
     if (objA === this.player && bodyB?.label === "deathZone") {
       this.killPlayer("fell");
       return true;
     }
+
     if (objB === this.player && bodyA?.label === "deathZone") {
       this.killPlayer("fell");
       return true;
     }
+
+    // Enemy
+    if (bodyB?.label === "deathZone" && objA?.isEnemy) {
+      objA.die?.();
+      this.stageState.enemiesRemaining -= 1;
+      return true;
+    }
+
+    if (bodyA?.label === "deathZone" && objB?.isEnemy) {
+      objB.die?.();
+      this.stageState.enemiesRemaining -= 1;
+      return true;
+    }
+
     return false;
   }
 
@@ -963,8 +1009,9 @@ export class BaseLevel extends Phaser.Scene {
         (this.stageState.enemiesRemaining ?? 1) - 1
       );
 
-      if (this.stageState.enemiesRemaining <= Math.floor(this.stageState.totalEnemies * 0.3)) {
+      if (this.stageState.enemiesRemaining = 0) {
         this.stageState.stageCleared = true;
+        this.completeStage();
       }
 
       if (Math.random() < 0.3) {
