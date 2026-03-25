@@ -1,7 +1,7 @@
 export const levelSevenConfig = {
-  sceneKey: "levelSeven",
-  stageNumber: 6,
-  nextScene: "levelEight",
+  sceneKey: "LevelSeven",
+  stageNumber: 7,
+  nextScene: "LevelEight",
 
   map: {
     key: "hellLevelTwo",
